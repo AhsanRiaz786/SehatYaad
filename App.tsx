@@ -1,45 +1,35 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initDatabase } from './src/database/init';
+import AppNavigator from './src/navigation/AppNavigator';
+import { Text, View } from 'react-native';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+export default function App() {
+  const [dbInitialized, setDbInitialized] = useState(false);
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    async function setup() {
+      try {
+        await initDatabase();
+        setDbInitialized(true);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    setup();
+  }, []);
+
+  if (!dbInitialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <AppNavigator />
     </SafeAreaProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;
