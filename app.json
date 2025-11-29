@@ -1,4 +1,20 @@
 {
-  "name": "SehatYaad",
-  "displayName": "SehatYaad"
+  "expo": {
+    "name": "SehatYaad",
+    "slug": "sehatyaad",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.anonymous.sehatyaad"
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.sehatyaad"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-asset"
+    ]
+  }
 }
