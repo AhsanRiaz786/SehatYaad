@@ -1,12 +1,17 @@
 import React from 'react';
-import { TouchableOpacity, TouchableOpacityProps, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity, TouchableOpacityProps, StyleSheet, ViewStyle, ActivityIndicator, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import AccessibleText from './AccessibleText';
-import { colors, layout, spacing } from '../utils/theme';
+import { colors, spacing, layout, typography, animation } from '../utils/theme';
 
 interface AccessibleButtonProps extends TouchableOpacityProps {
     title: string;
     onPress: () => void;
-    variant?: 'primary' | 'secondary' | 'outline';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'success' | 'danger';
+    size?: 'small' | 'medium' | 'large';
+    loading?: boolean;
+    icon?: React.ReactNode;
+    iconPosition?: 'left' | 'right';
     style?: ViewStyle;
     textStyle?: object;
 }
@@ -15,63 +20,153 @@ export default function AccessibleButton({
     title,
     onPress,
     variant = 'primary',
+    size = 'medium',
+    loading = false,
+    icon,
+    iconPosition = 'left',
     style,
     textStyle,
+    disabled,
     ...props
 }: AccessibleButtonProps) {
-    const getBackgroundColor = () => {
+    const getGradientColors = () => {
         switch (variant) {
-            case 'primary': return colors.primary;
-            case 'secondary': return colors.secondary;
-            case 'outline': return 'transparent';
-            default: return colors.primary;
+            case 'primary':
+                return colors.gradients.primary;
+            case 'success':
+                return colors.gradients.success;
+            case 'danger':
+                return colors.gradients.danger;
+            default:
+                return colors.gradients.primary;
         }
     };
 
-    const getTextColor = () => {
-        switch (variant) {
-            case 'primary': return colors.white;
-            case 'secondary': return colors.white;
-            case 'outline': return colors.primary;
-            default: return colors.white;
+    const getHeight = () => {
+        switch (size) {
+            case 'small':
+                return layout.touchableHeightSmall;
+            case 'large':
+                return layout.touchableHeightLarge;
+            default:
+                return layout.touchableHeight;
         }
     };
 
+    const isOutlineVariant = variant === 'secondary' || variant === 'ghost' || variant === 'outline';
+
+    const buttonContent = (
+        <>
+            {loading ? (
+                <ActivityIndicator
+                    size="small"
+                    color={isOutlineVariant ? colors.primary.purple : colors.neutral.white}
+                />
+            ) : (
+                <View style={styles.contentContainer}>
+                    {icon && iconPosition === 'left' && (
+                        <View style={styles.iconLeft}>{icon}</View>
+                    )}
+                    <AccessibleText
+                        variant="button"
+                        color={isOutlineVariant ? colors.primary.purple : colors.neutral.white}
+                        style={[styles.text, textStyle]}
+                    >
+                        {title}
+                    </AccessibleText>
+                    {icon && iconPosition === 'right' && (
+                        <View style={styles.iconRight}>{icon}</View>
+                    )}
+                </View>
+            )}
+        </>
+    );
+
+    if (isOutlineVariant) {
+        // Outline or Ghost button - no gradient background
+        return (
+            <TouchableOpacity
+                style={[
+                    styles.button,
+                    {
+                        height: getHeight(),
+                        borderWidth: variant === 'secondary' ? 2 : 0,
+                        borderColor: colors.primary.purple,
+                        backgroundColor: variant === 'ghost' ? 'transparent' : colors.neutral.white,
+                    },
+                    disabled && styles.disabled,
+                    style,
+                ]}
+                onPress={onPress}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={title}
+                disabled={disabled || loading}
+                {...props}
+            >
+                {buttonContent}
+            </TouchableOpacity>
+        );
+    }
+
+    // Gradient button (primary, success, danger)
     return (
         <TouchableOpacity
             style={[
                 styles.button,
-                {
-                    backgroundColor: getBackgroundColor(),
-                    borderColor: variant === 'outline' ? colors.primary : 'transparent',
-                    borderWidth: variant === 'outline' ? 2 : 0,
-                },
-                style
+                { height: getHeight() },
+                disabled && styles.disabled,
+                style,
             ]}
             onPress={onPress}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel={title}
+            disabled={disabled || loading}
             {...props}
         >
-            <AccessibleText variant="h3" color={getTextColor()} style={[styles.text, textStyle]}>
-                {title}
-            </AccessibleText>
+            <LinearGradient
+                colors={getGradientColors() as [string, string, ...string[]]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradient}
+            >
+                {buttonContent}
+            </LinearGradient>
         </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
     button: {
-        height: layout.touchableHeight,
-        borderRadius: layout.borderRadius,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: spacing.m,
+        borderRadius: layout.borderRadius.medium,
         width: '100%',
         marginVertical: spacing.s,
+        overflow: 'hidden',
+        ...layout.shadow.medium,
+    },
+    gradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: spacing.l,
+    },
+    contentContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     text: {
         fontWeight: '600',
+        textAlign: 'center',
+    },
+    iconLeft: {
+        marginRight: spacing.s,
+    },
+    iconRight: {
+        marginLeft: spacing.s,
+    },
+    disabled: {
+        opacity: 0.5,
     },
 });
