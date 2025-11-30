@@ -22,7 +22,10 @@ DerivedData
 *.xcuserstate
 **/.xcode.env.local
 
-# Android/IntelliJ
+# Expo
+.expo/
+
+# @end expo-clid/IntelliJ
 #
 build/
 .idea
