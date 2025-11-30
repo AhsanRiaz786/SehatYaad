@@ -5,6 +5,7 @@ import AccessibleText from '../components/AccessibleText';
 import AccessibleButton from '../components/AccessibleButton';
 import { getMedicationById, deleteMedication, Medication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
+import { cancelMedicationNotifications } from '../services/notificationService';
 
 type ParamList = {
     MedicationDetail: { medicationId: number };
@@ -44,6 +45,12 @@ export default function MedicationDetailScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            // Cancel notifications if they exist
+                            if (medication?.notification_ids && medication.notification_ids.length > 0) {
+                                await cancelMedicationNotifications(medication.notification_ids);
+                                console.log('Cancelled notifications for medication');
+                            }
+
                             await deleteMedication(medicationId);
                             navigation.goBack();
                         } catch (error) {
