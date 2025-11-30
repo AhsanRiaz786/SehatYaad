@@ -11,6 +11,7 @@ export interface Medication {
     times: string[]; // stored as JSON
     notes?: string;
     color?: string;
+    notification_ids?: string[]; // stored as JSON
     created_at?: number;
 }
 
@@ -26,9 +27,10 @@ export interface Dose {
 export const addMedication = async (medication: Medication) => {
     const db = await getDB();
     const timesJson = JSON.stringify(medication.times);
+    const notificationIdsJson = medication.notification_ids ? JSON.stringify(medication.notification_ids) : null;
     const result = await db.runAsync(
-        'INSERT INTO medications (name, dosage, frequency, times, notes, color) VALUES (?, ?, ?, ?, ?, ?)',
-        medication.name, medication.dosage, medication.frequency, timesJson, medication.notes || '', medication.color || ''
+        'INSERT INTO medications (name, dosage, frequency, times, notes, color, notification_ids) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        medication.name, medication.dosage, medication.frequency, timesJson, medication.notes || '', medication.color || '', notificationIdsJson
     );
     return result.lastInsertRowId;
 };
@@ -38,7 +40,8 @@ export const getMedications = async (): Promise<Medication[]> => {
     const result = await db.getAllAsync<any>('SELECT * FROM medications ORDER BY created_at DESC');
     return result.map(row => ({
         ...row,
-        times: JSON.parse(row.times)
+        times: JSON.parse(row.times),
+        notification_ids: row.notification_ids ? JSON.parse(row.notification_ids) : []
     }));
 };
 
@@ -48,7 +51,8 @@ export const getMedicationById = async (id: number): Promise<Medication | null> 
     if (!result) return null;
     return {
         ...result,
-        times: JSON.parse(result.times)
+        times: JSON.parse(result.times),
+        notification_ids: result.notification_ids ? JSON.parse(result.notification_ids) : []
     };
 };
 

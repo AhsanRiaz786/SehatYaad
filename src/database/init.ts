@@ -3,11 +3,11 @@ import * as SQLite from 'expo-sqlite';
 export const DATABASE_NAME = 'sehatyaad.db';
 
 export async function initDatabase() {
-    try {
-        const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+  try {
+    const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
 
-        // Create migrations table if not exists
-        await db.execAsync(`
+    // Create migrations table if not exists
+    await db.execAsync(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS migrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -16,14 +16,14 @@ export async function initDatabase() {
       );
     `);
 
-        // Get current version
-        const result = await db.getFirstAsync<{ version: number }>('SELECT version FROM migrations ORDER BY version DESC LIMIT 1');
-        const currentVersion = result ? result.version : 0;
+    // Get current version
+    const result = await db.getFirstAsync<{ version: number }>('SELECT version FROM migrations ORDER BY version DESC LIMIT 1');
+    const currentVersion = result ? result.version : 0;
 
-        const migrations = [
-            {
-                version: 1,
-                up: `
+    const migrations = [
+      {
+        version: 1,
+        up: `
           CREATE TABLE IF NOT EXISTS medications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -67,21 +67,27 @@ export async function initDatabase() {
             medications_json TEXT
           );
         `
-            }
-        ];
+      },
+      {
+        version: 2,
+        up: `
+          ALTER TABLE medications ADD COLUMN notification_ids TEXT;
+        `
+      }
+    ];
 
-        for (const migration of migrations) {
-            if (migration.version > currentVersion) {
-                await db.execAsync(migration.up);
-                await db.runAsync('INSERT INTO migrations (version) VALUES (?)', migration.version);
-                console.log(`Applied migration version ${migration.version}`);
-            }
-        }
-
-        console.log('Database initialized successfully');
-        return db;
-    } catch (error) {
-        console.error('Error initializing database:', error);
-        throw error;
+    for (const migration of migrations) {
+      if (migration.version > currentVersion) {
+        await db.execAsync(migration.up);
+        await db.runAsync('INSERT INTO migrations (version) VALUES (?)', migration.version);
+        console.log(`Applied migration version ${migration.version}`);
+      }
     }
+
+    console.log('Database initialized successfully');
+    return db;
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    throw error;
+  }
 }
