@@ -10,10 +10,29 @@
       "package": "com.anonymous.sehatyaad"
     },
     "ios": {
-      "bundleIdentifier": "com.anonymous.sehatyaad"
+      "bundleIdentifier": "com.anonymous.sehatyaad",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "notification": {
+      "color": "#007AFF",
+      "androidMode": "default",
+      "androidCollapsedTitle": "{{unread_count}} medication reminders"
     },
     "plugins": [
       "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#007AFF",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Medication Reminders"
+        }
+      ],
       "expo-asset"
     ]
   }
