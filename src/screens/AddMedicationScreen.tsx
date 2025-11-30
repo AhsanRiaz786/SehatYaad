@@ -133,7 +133,7 @@ export default function AddMedicationScreen() {
             {/* Form Card */}
             <Card style={styles.formCard}>
                 <AccessibleText variant="h3" style={styles.sectionTitle}>
-                    Basic Information
+                    Medication Information
                 </AccessibleText>
 
                 <AccessibleInput
@@ -260,6 +260,9 @@ const styles = StyleSheet.create({
     sectionTitle: {
         marginBottom: spacing.m,
         flexDirection: 'row',
+        textAlign: 'center',
+        color: colors.neutral.gray700,
+        fontWeight: 'bold',
         alignItems: 'center',
     },
     chipContainer: {
@@ -300,7 +303,8 @@ const styles = StyleSheet.create({
         transform: [{ scale: 1.1 }],
     },
     saveButton: {
-        marginHorizontal: spacing.m,
-        marginTop: spacing.m,
+        alignSelf: 'center',
+        width: '80%',
+        marginTop: 20,
     },
 });

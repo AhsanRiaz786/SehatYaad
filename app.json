@@ -3,13 +3,19 @@
     "name": "SehatYaad",
     "slug": "sehatyaad",
     "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
-    "android": {
-      "package": "com.anonymous.sehatyaad"
-    },
     "ios": {
+      "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sehatyaad",
       "infoPlist": {
         "UIBackgroundModes": [
@@ -17,8 +23,19 @@
         ]
       }
     },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.anonymous.sehatyaad"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "notification": {
-      "color": "#007AFF",
+      "icon": "./assets/notification-icon.png",
+      "color": "#7209B7",
       "androidMode": "default",
       "androidCollapsedTitle": "{{unread_count}} medication reminders"
     },
@@ -27,14 +44,14 @@
       [
         "expo-notifications",
         {
-          "color": "#007AFF",
+          "icon": "./assets/notification-icon.png",
+          "color": "#7209B7",
           "sounds": [],
           "androidMode": "default",
           "androidCollapsedTitle": "Medication Reminders"
         }
       ],
-      "expo-asset",
-      "expo-font"
+      "expo-asset"
     ]
   }
 }
