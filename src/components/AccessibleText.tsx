@@ -3,7 +3,7 @@ import { Text, TextProps, StyleSheet } from 'react-native';
 import { colors, typography } from '../utils/theme';
 
 interface AccessibleTextProps extends TextProps {
-    variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption';
+    variant?: 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'bodyLarge' | 'caption' | 'small' | 'button';
     color?: string;
 }
 
