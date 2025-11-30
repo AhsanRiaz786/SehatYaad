@@ -133,7 +133,7 @@ export default function AddMedicationScreen() {
             {/* Form Card */}
             <Card style={styles.formCard}>
                 <AccessibleText variant="h3" style={styles.sectionTitle}>
-                    Medication Information
+                    Medication Details
                 </AccessibleText>
 
                 <AccessibleInput

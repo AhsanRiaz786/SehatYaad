@@ -31,34 +31,22 @@ export default function AccessibleInput({
     ...props
 }: AccessibleInputProps) {
     const [isFocused, setIsFocused] = useState(false);
-    const [labelPosition] = useState(new Animated.Value(value ? 1 : 0));
+    const [labelPosition] = useState(new Animated.Value(1)); // Always start in "up" position
 
     const handleFocus = (e: any) => {
         setIsFocused(true);
-        Animated.timing(labelPosition, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: false,
-        }).start();
         onFocus?.(e);
     };
 
     const handleBlur = (e: any) => {
         setIsFocused(false);
-        if (!value) {
-            Animated.timing(labelPosition, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: false,
-            }).start();
-        }
         onBlur?.(e);
     };
 
     const labelStyle = {
         top: labelPosition.interpolate({
             inputRange: [0, 1],
-            outputRange: [18, 0],
+            outputRange: [20, -10],
         }),
         fontSize: labelPosition.interpolate({
             inputRange: [0, 1],
@@ -95,7 +83,8 @@ export default function AccessibleInput({
                         icon && iconPosition === 'right' ? styles.inputWithRightIcon : undefined,
                         style,
                     ]}
-                    placeholderTextColor={colors.neutral.gray500}
+                    placeholder={props.placeholder}
+                    placeholderTextColor={colors.neutral.gray400}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                     value={value}
@@ -127,12 +116,13 @@ const styles = StyleSheet.create({
         marginBottom: spacing.m,
     },
     label: {
+        color: colors.neutral.black,
         position: 'absolute',
-        left: spacing.m,
+        left: spacing.xs,
         zIndex: 1,
         backgroundColor: colors.neutral.white,
         paddingHorizontal: 4,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     inputContainer: {
         flexDirection: 'row',
@@ -141,7 +131,7 @@ const styles = StyleSheet.create({
         borderColor: colors.neutral.gray300,
         borderRadius: layout.borderRadius.medium,
         backgroundColor: colors.neutral.white,
-        marginTop: 8,
+        marginTop: 12,
         ...layout.shadow.small,
     },
     inputContainerFocused: {
