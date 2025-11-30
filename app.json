@@ -33,7 +33,8 @@
           "androidCollapsedTitle": "Medication Reminders"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ]
   }
 }
