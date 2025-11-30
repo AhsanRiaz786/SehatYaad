@@ -6,6 +6,7 @@ import AccessibleInput from '../components/AccessibleInput';
 import AccessibleButton from '../components/AccessibleButton';
 import { addMedication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
+import { requestPermissions, scheduleMedicationNotifications } from '../services/notificationService';
 
 const FREQUENCIES = ['Daily', 'Twice Daily', 'Thrice Daily', 'Weekly', 'As Needed'];
 const COLORS = ['#FF5733', '#33FF57', '#3357FF', '#FF33F5', '#F5FF33', '#33FFF5'];
@@ -37,6 +38,60 @@ export default function AddMedicationScreen() {
 
         setLoading(true);
         try {
+            // Request notification permissions
+            const hasPermission = await requestPermissions();
+
+            if (!hasPermission) {
+                Alert.alert(
+                    'Permissions Required',
+                    'Notification permissions are required for medication reminders. You can enable them in settings.',
+                    [
+                        { text: 'Skip', style: 'cancel' },
+                        { text: 'Save Anyway', onPress: () => saveMedicationWithoutNotifications() }
+                    ]
+                );
+                setLoading(false);
+                return;
+            }
+
+            // Add medication to database
+            const medicationData = {
+                name,
+                dosage,
+                frequency,
+                times: getTimesForFrequency(frequency),
+                notes,
+                color: selectedColor,
+            };
+
+            const medicationId = await addMedication(medicationData);
+
+            // Schedule notifications
+            try {
+                const notificationIds = await scheduleMedicationNotifications({
+                    ...medicationData,
+                    id: medicationId
+                });
+
+                console.log(`Scheduled ${notificationIds.length} notifications for ${name}`);
+            } catch (notificationError) {
+                console.error('Failed to schedule notifications:', notificationError);
+                Alert.alert('Warning', 'Medication saved but reminders could not be scheduled');
+            }
+
+            Alert.alert('Success', 'Medication added successfully with reminders!', [
+                { text: 'OK', onPress: () => navigation.goBack() }
+            ]);
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Failed to save medication');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const saveMedicationWithoutNotifications = async () => {
+        try {
             await addMedication({
                 name,
                 dosage,
@@ -45,14 +100,12 @@ export default function AddMedicationScreen() {
                 notes,
                 color: selectedColor,
             });
-            Alert.alert('Success', 'Medication added successfully', [
+            Alert.alert('Success', 'Medication added (without reminders)', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Failed to save medication');
-        } finally {
-            setLoading(false);
         }
     };
 
