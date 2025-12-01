@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AccessibleText from '../components/AccessibleText';
 import MedicationCard from '../components/MedicationCard';
 import DailySummary from '../components/DailySummaryCard';
+import DoseActionModal from '../components/DoseActionModal';
 import { getMedications, Medication, logDose, getTodaysDoses } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { useNavigation } from '@react-navigation/native';
@@ -23,6 +24,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<TimeBlock>>(new Set(['morning', 'noon', 'evening', 'night']));
   const [refreshKey, setRefreshKey] = useState(0);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedMedication, setSelectedMedication] = useState<MedicationWithStatus | null>(null);
   const navigation = useNavigation<any>();
 
   const fetchData = async () => {
@@ -95,22 +98,14 @@ export default function HomeScreen() {
     navigation.navigate('MedicationDetail', { medicationId: medication.id });
   };
 
-  const handleQuickMark = async (medication: MedicationWithStatus) => {
-    try {
-      if (medication.id && medication.nextTime) {
-        const scheduledTime = getScheduledTimeForToday(medication.nextTime);
-        await logDose({
-          medication_id: medication.id,
-          scheduled_time: scheduledTime,
-          actual_time: Math.floor(Date.now() / 1000),
-          status: 'taken',
-        });
-        fetchData(); // Refresh medication list
-        setRefreshKey(prev => prev + 1); // Trigger DailySummary refresh
-      }
-    } catch (error) {
-      console.error('Error marking dose:', error);
-    }
+  const handleQuickMark = (medication: MedicationWithStatus) => {
+    setSelectedMedication(medication);
+    setModalVisible(true);
+  };
+
+  const handleModalSuccess = () => {
+    fetchData(); // Refresh medication list
+    setRefreshKey(prev => prev + 1); // Trigger DailySummary refresh
   };
 
   const toggleBlock = (block: TimeBlock) => {
@@ -147,6 +142,13 @@ export default function HomeScreen() {
               {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </AccessibleText>
           </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('DoseHistory')}
+            style={styles.historyButton}
+            accessibilityLabel="View dose history"
+          >
+            <Ionicons name="calendar-outline" size={28} color={colors.neutral.white} />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -263,6 +265,20 @@ export default function HomeScreen() {
           <Ionicons name="add" size={32} color={colors.neutral.white} />
         </LinearGradient>
       </TouchableOpacity>
+
+      {/* Dose Action Modal */}
+      {selectedMedication && selectedMedication.nextTime && (
+        <DoseActionModal
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            setSelectedMedication(null);
+          }}
+          medication={selectedMedication as Medication & { id: number }}
+          scheduledTime={selectedMedication.nextTime}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </View>
   );
 }
@@ -284,6 +300,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     marginVertical: spacing.xs,
+  },
+  historyButton: {
+    padding: spacing.s,
+    marginTop: spacing.xs,
   },
   scrollView: {
     flex: 1,

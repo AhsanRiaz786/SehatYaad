@@ -5,6 +5,8 @@ export interface TimeBlockInfo {
     timeRange: string;
     icon: string;
     gradient: string[];
+    color: string;
+    label: string;
 }
 
 /**
@@ -32,29 +34,37 @@ export function getTimeBlockInfo(block: TimeBlock): TimeBlockInfo {
         case 'morning':
             return {
                 name: 'Morning',
+                label: 'Morning',
                 timeRange: '6 AM - 11 AM',
                 icon: 'sunny',
+                color: '#FFB800',
                 gradient: ['#FFD93D', '#FF9A3D']
             };
         case 'noon':
             return {
                 name: 'Noon',
+                label: 'Noon',
                 timeRange: '11 AM - 3 PM',
                 icon: 'partly-sunny',
+                color: '#FF9A3D',
                 gradient: ['#FF9A3D', '#FF6B3D']
             };
         case 'evening':
             return {
                 name: 'Evening',
+                label: 'Evening',
                 timeRange: '3 PM - 8 PM',
                 icon: 'sunset',
+                color: '#FF6B3D',
                 gradient: ['#FF6B3D', '#9D50BB']
             };
         case 'night':
             return {
                 name: 'Night',
+                label: 'Night',
                 timeRange: '8 PM - 6 AM',
                 icon: 'moon',
+                color: '#667eea',
                 gradient: ['#667eea', '#764ba2']
             };
     }
