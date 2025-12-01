@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AccessibleText from './AccessibleText';
+import StatusBadge, { DoseStatus } from './StatusBadge';
 import { Medication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,11 +10,21 @@ import { Ionicons } from '@expo/vector-icons';
 interface MedicationCardProps {
     medication: Medication;
     onPress?: () => void;
+    status?: DoseStatus;
+    nextDoseTime?: string;
+    onQuickMark?: () => void;
 }
 
-export default function MedicationCard({ medication, onPress }: MedicationCardProps) {
+export default function MedicationCard({
+    medication,
+    onPress,
+    status = 'pending',
+    nextDoseTime,
+    onQuickMark
+}: MedicationCardProps) {
     // Get next dose time display
     const getNextDoseTime = () => {
+        if (nextDoseTime) return nextDoseTime;
         if (!medication.times || medication.times.length === 0) return 'No schedule';
         const now = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes();
@@ -30,15 +41,32 @@ export default function MedicationCard({ medication, onPress }: MedicationCardPr
 
     const medicationColor = medication.color || colors.primary.purple;
 
+    // Get border color based on status
+    const getBorderColor = () => {
+        switch (status) {
+            case 'taken':
+                return colors.semantic.success;
+            case 'missed':
+                return colors.semantic.error;
+            case 'snoozed':
+                return '#FF9500';
+            default:
+                return 'transparent';
+        }
+    };
+
     return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.9}
             style={styles.container}
             accessibilityRole="button"
-            accessibilityLabel={`${medication.name}, ${medication.dosage}, Tap for details`}
+            accessibilityLabel={`${medication.name}, ${medication.dosage}, ${status}, Tap for details`}
         >
-            <View style={styles.card}>
+            <View style={[
+                styles.card,
+                { borderColor: getBorderColor(), borderWidth: getBorderColor() !== 'transparent' ? 2 : 0 }
+            ]}>
                 {/* Color indicator / Pill icon */}
                 <LinearGradient
                     colors={[medicationColor, medicationColor]}
@@ -49,9 +77,13 @@ export default function MedicationCard({ medication, onPress }: MedicationCardPr
 
                 {/* Content */}
                 <View style={styles.content}>
-                    <AccessibleText variant="h3" numberOfLines={1}>
-                        {medication.name}
-                    </AccessibleText>
+                    <View style={styles.headerRow}>
+                        <AccessibleText variant="h3" numberOfLines={1} style={styles.name}>
+                            {medication.name}
+                        </AccessibleText>
+                        <StatusBadge status={status} compact />
+                    </View>
+
                     <AccessibleText
                         variant="body"
                         color={colors.neutral.gray600}
@@ -59,6 +91,7 @@ export default function MedicationCard({ medication, onPress }: MedicationCardPr
                     >
                         {medication.dosage} • {medication.frequency}
                     </AccessibleText>
+
                     <View style={styles.timeRow}>
                         <Ionicons
                             name="time-outline"
@@ -75,12 +108,30 @@ export default function MedicationCard({ medication, onPress }: MedicationCardPr
                     </View>
                 </View>
 
-                {/* Chevron */}
-                <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color={colors.neutral.gray400}
-                />
+                {/* Quick action or chevron */}
+                {onQuickMark && status === 'pending' ? (
+                    <TouchableOpacity
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onQuickMark();
+                        }}
+                        style={styles.quickActionButton}
+                        accessibilityLabel="Mark as taken"
+                        accessibilityRole="button"
+                    >
+                        <Ionicons
+                            name="checkmark-circle"
+                            size={32}
+                            color={colors.semantic.success}
+                        />
+                    </TouchableOpacity>
+                ) : (
+                    <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color={colors.neutral.gray400}
+                    />
+                )}
             </View>
         </TouchableOpacity>
     );
@@ -109,6 +160,16 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
     },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.xs,
+    },
+    name: {
+        flex: 1,
+        marginRight: spacing.s,
+    },
     dosage: {
         marginTop: spacing.xs,
     },
@@ -120,5 +181,9 @@ const styles = StyleSheet.create({
     timeText: {
         marginLeft: spacing.xs,
         fontWeight: '500',
+    },
+    quickActionButton: {
+        padding: spacing.xs,
+        marginLeft: spacing.s,
     },
 });
