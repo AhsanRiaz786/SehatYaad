@@ -161,27 +161,83 @@ export const getDosesByDateRange = async (startDate: Date, endDate: Date): Promi
     );
 };
 
-export const getDailySummary = async (date: Date = new Date()): Promise<{ total: number; taken: number; missed: number; pending: number }> => {
+export const getDailySummary = async (date: Date = new Date()) => {
     const db = await getDB();
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const doses = await db.getAllAsync<Dose>(
-        'SELECT status FROM doses WHERE scheduled_time >= ? AND scheduled_time <= ?',
+    // Get all medications
+    const medications = await getMedications();
+    console.log(`📊 Checking ${medications.length} medications for today`);
+
+    // Get all logged doses for today
+    const loggedDoses = await db.getAllAsync<Dose>(
+        'SELECT * FROM doses WHERE scheduled_time >= ? AND scheduled_time <= ?',
         Math.floor(startOfDay.getTime() / 1000),
         Math.floor(endOfDay.getTime() / 1000)
     );
+    console.log(`📊 Found ${loggedDoses.length} logged doses in database`);
 
-    const summary = {
-        total: doses.length,
-        taken: doses.filter(d => d.status === 'taken').length,
-        missed: doses.filter(d => d.status === 'missed').length,
-        pending: doses.filter(d => d.status === 'pending').length
-    };
+    let total = 0;
+    let taken = 0;
+    let missed = 0;
+    let pending = 0;
 
-    return summary;
+    // Calculate scheduled doses for today
+    const now = Date.now() / 1000;
+
+    for (const med of medications) {
+        if (!med.times || med.times.length === 0) continue;
+
+        console.log(`📊 Processing medication: ${med.name} with ${med.times.length} times`);
+
+        for (const time of med.times) {
+            const [hours, minutes] = time.split(':').map(Number);
+            const scheduledDate = new Date(date);
+            scheduledDate.setHours(hours, minutes, 0, 0);
+            const scheduledTime = Math.floor(scheduledDate.getTime() / 1000);
+
+            // Only count doses that are scheduled for today
+            if (scheduledTime >= Math.floor(startOfDay.getTime() / 1000) &&
+                scheduledTime <= Math.floor(endOfDay.getTime() / 1000)) {
+
+                total++;
+
+                // Check if this dose has been logged
+                const loggedDose = loggedDoses.find(d =>
+                    d.medication_id === med.id &&
+                    Math.abs(d.scheduled_time - scheduledTime) < 300 // Within 5 minutes
+                );
+
+                if (loggedDose) {
+                    console.log(`  ✓ ${time} - Logged as ${loggedDose.status}`);
+                    if (loggedDose.status === 'taken') {
+                        taken++;
+                    } else if (loggedDose.status === 'missed') {
+                        missed++;
+                    }
+                    // snoozed and skipped don't count as taken or missed
+                } else {
+                    // Dose not logged yet - check if it's pending or missed
+                    const timeDiff = scheduledTime - now;
+                    const hoursUntil = timeDiff / 3600;
+
+                    if (timeDiff > -1800) { // Within past 30 minutes or in future
+                        pending++;
+                        console.log(`  ⏰ ${time} - Pending (in ${hoursUntil.toFixed(1)}h)`);
+                    } else {
+                        missed++;
+                        console.log(`  ❌ ${time} - Missed (${hoursUntil.toFixed(1)}h ago)`);
+                    }
+                }
+            }
+        }
+    }
+
+    console.log(`📊 Final Summary: Total=${total}, Taken=${taken}, Pending=${pending}, Missed=${missed}`);
+    return { total, taken, missed, pending };
 };
 
 // Adherence

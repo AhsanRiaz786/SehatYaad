@@ -143,7 +143,8 @@ export async function snoozeNotification(
     medicationId: number,
     medicationName: string,
     dosage: string,
-    snoozeMinutes: number = 10
+    snoozeMinutes: number = 10,
+    originalTime?: string
 ): Promise<string> {
     try {
         const notificationId = await Notifications.scheduleNotificationAsync({
@@ -156,6 +157,7 @@ export async function snoozeNotification(
                     medicationId,
                     medicationName,
                     dosage,
+                    time: originalTime || new Date().toTimeString().slice(0, 5), // Include original time or current time
                     snoozed: true,
                 },
                 categoryIdentifier: 'medication-reminder',
@@ -234,12 +236,16 @@ export function setupNotificationListeners(
         console.log('Notification response:', response);
         const actionIdentifier = response.actionIdentifier;
         const data = response.notification.request.content.data;
+        const notificationId = response.notification.request.identifier;
+
+        // Extract time, handle both regular and snoozed notifications
+        const notificationTime = (data.time as string) || new Date().toTimeString().slice(0, 5);
 
         // Handle action buttons
         if (actionIdentifier === 'take') {
             console.log(`✅ User marked ${data.medicationName} as taken from notification`);
             try {
-                const scheduledTime = getScheduledTimeForToday(data.time as string);
+                const scheduledTime = getScheduledTimeForToday(notificationTime);
                 await logDose({
                     medication_id: data.medicationId as number,
                     scheduled_time: scheduledTime,
@@ -248,6 +254,8 @@ export function setupNotificationListeners(
                     notes: 'Marked from notification'
                 });
                 console.log('✅ Dose logged as taken');
+                // Dismiss the notification
+                await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
                 console.error('Error logging dose from notification:', error);
             }
@@ -258,9 +266,10 @@ export function setupNotificationListeners(
                     data.medicationId as number,
                     data.medicationName as string,
                     data.dosage as string,
-                    10
+                    10,
+                    notificationTime // Pass the time along
                 );
-                const scheduledTime = getScheduledTimeForToday(data.time as string);
+                const scheduledTime = getScheduledTimeForToday(notificationTime);
                 await logDose({
                     medication_id: data.medicationId as number,
                     scheduled_time: scheduledTime,
@@ -269,13 +278,15 @@ export function setupNotificationListeners(
                     notes: 'Snoozed from notification'
                 });
                 console.log('⏰ Dose logged as snoozed');
+                // Dismiss the notification
+                await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
                 console.error('Error snoozing from notification:', error);
             }
         } else if (actionIdentifier === 'skip') {
             console.log(`⏭️ User skipped ${data.medicationName}`);
             try {
-                const scheduledTime = getScheduledTimeForToday(data.time as string);
+                const scheduledTime = getScheduledTimeForToday(notificationTime);
                 await logDose({
                     medication_id: data.medicationId as number,
                     scheduled_time: scheduledTime,
@@ -284,6 +295,8 @@ export function setupNotificationListeners(
                     notes: 'Skipped from notification'
                 });
                 console.log('⏭️ Dose logged as skipped');
+                // Dismiss the notification
+                await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
                 console.error('Error skipping dose from notification:', error);
             }

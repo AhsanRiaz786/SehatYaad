@@ -114,16 +114,19 @@ export default function MedicationDetailScreen() {
                     text: 'Snooze',
                     onPress: async () => {
                         try {
+                            // Get next time before snoozing
+                            const nextTime = medication.times[0];
+
                             // Schedule a snoozed notification
                             await snoozeNotification(
                                 medication.id!,
                                 medication.name,
                                 medication.dosage,
-                                10
+                                10,
+                                nextTime // Pass the original time
                             );
 
                             // Log dose as snoozed
-                            const nextTime = medication.times[0];
                             const scheduledTime = getScheduledTimeForToday(nextTime);
 
                             await logDose({
