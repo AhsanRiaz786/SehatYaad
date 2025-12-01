@@ -13,6 +13,8 @@ import {
     MedicationDetailScreen,
     OnboardingScreen,
     SplashScreen,
+    CameraScreen,
+    PrescriptionReviewScreen,
 } from '../screens';
 import DoseHistoryScreen from '../screens/DoseHistoryScreen';
 
@@ -95,6 +97,20 @@ export default function AppNavigator() {
                     options={{
                         headerTitle: 'Dose History',
                         headerTintColor: colors.primary.purple,
+                        headerShown: false,
+                    }}
+                />
+                <Stack.Screen
+                    name="Camera"
+                    component={CameraScreen}
+                    options={{
+                        headerShown: false,
+                    }}
+                />
+                <Stack.Screen
+                    name="PrescriptionReview"
+                    component={PrescriptionReviewScreen}
+                    options={{
                         headerShown: false,
                     }}
                 />

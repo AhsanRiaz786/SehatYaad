@@ -249,22 +249,42 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={handleAddMedication}
-        accessibilityLabel="Add medication"
-        accessibilityRole="button"
-      >
-        <LinearGradient
-          colors={colors.gradients.primary as [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
+      {/* Floating Action Buttons */}
+      <View style={styles.fabContainer}>
+        {/* Scan Prescription FAB */}
+        <TouchableOpacity
+          style={[styles.fab, styles.fabSecondary]}
+          onPress={() => navigation.navigate('Camera')}
+          accessibilityLabel="Scan prescription"
+          accessibilityRole="button"
         >
-          <Ionicons name="add" size={32} color={colors.neutral.white} />
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={['#10b981', '#059669'] as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="camera" size={28} color={colors.neutral.white} />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Add Medication FAB */}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleAddMedication}
+          accessibilityLabel="Add medication"
+          accessibilityRole="button"
+        >
+          <LinearGradient
+            colors={colors.gradients.primary as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="add" size={32} color={colors.neutral.white} />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
 
       {/* Dose Action Modal */}
       {selectedMedication && selectedMedication.nextTime && (
@@ -366,14 +386,23 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
   },
-  fab: {
+  fabContainer: {
     position: 'absolute',
     bottom: spacing.l,
     right: spacing.l,
+    flexDirection: 'column',
+    gap: spacing.m,
+  },
+  fab: {
     width: 64,
     height: 64,
     borderRadius: 32,
     ...layout.shadow.large,
+  },
+  fabSecondary: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   fabGradient: {
     width: '100%',
