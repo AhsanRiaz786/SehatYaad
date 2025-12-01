@@ -14,6 +14,7 @@ import {
     OnboardingScreen,
     SplashScreen,
 } from '../screens';
+import DoseHistoryScreen from '../screens/DoseHistoryScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -52,7 +53,6 @@ function MainTabs() {
                     shadowRadius: 4,
                 },
                 tabBarLabelStyle: {
-                    fontFamily: typography.caption.fontFamily,
                     fontSize: 12,
                     fontWeight: '500',
                 },
@@ -87,7 +87,15 @@ export default function AppNavigator() {
                     options={{
                         headerTitle: 'Medication Details',
                         headerTintColor: colors.primary.purple,
-                        headerBackTitleVisible: false,
+                    }}
+                />
+                <Stack.Screen
+                    name="DoseHistory"
+                    component={DoseHistoryScreen}
+                    options={{
+                        headerTitle: 'Dose History',
+                        headerTintColor: colors.primary.purple,
+                        headerShown: false,
                     }}
                 />
             </Stack.Navigator>
