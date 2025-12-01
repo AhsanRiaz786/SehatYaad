@@ -6,9 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import AccessibleText from '../components/AccessibleText';
 import AccessibleButton from '../components/AccessibleButton';
 import Card from '../components/Card';
-import { getMedicationById, deleteMedication, Medication } from '../database/helpers';
+import { getMedicationById, deleteMedication, Medication, logDose } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
-import { cancelMedicationNotifications } from '../services/notificationService';
+import { cancelMedicationNotifications, snoozeNotification } from '../services/notificationService';
+import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
 
 type ParamList = {
     MedicationDetail: { medicationId: number };
@@ -58,6 +59,121 @@ export default function MedicationDetailScreen() {
                             navigation.goBack();
                         } catch (error) {
                             Alert.alert('Error', 'Failed to delete medication');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleTakeNow = async () => {
+        if (!medication || !medication.id) return;
+
+        Alert.alert(
+            'Mark as Taken',
+            `Did you take ${medication.name}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Yes, I took it',
+                    onPress: async () => {
+                        try {
+                            // Get the next scheduled time for this medication
+                            const nextTime = medication.times[0]; // Simplified - take first time
+                            const scheduledTime = getScheduledTimeForToday(nextTime);
+
+                            // Log the dose as taken
+                            await logDose({
+                                medication_id: medication.id!,
+                                scheduled_time: scheduledTime,
+                                actual_time: Math.floor(Date.now() / 1000),
+                                status: 'taken',
+                                notes: 'Marked from detail screen'
+                            });
+
+                            Alert.alert('Success', 'Dose marked as taken!');
+                        } catch (error) {
+                            console.error('Error logging dose:', error);
+                            Alert.alert('Error', 'Failed to log dose');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleSnooze = async () => {
+        if (!medication || !medication.id) return;
+
+        Alert.alert(
+            'Snooze Reminder',
+            'Snooze this reminder for 10 minutes?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Snooze',
+                    onPress: async () => {
+                        try {
+                            // Schedule a snoozed notification
+                            await snoozeNotification(
+                                medication.id!,
+                                medication.name,
+                                medication.dosage,
+                                10
+                            );
+
+                            // Log dose as snoozed
+                            const nextTime = medication.times[0];
+                            const scheduledTime = getScheduledTimeForToday(nextTime);
+
+                            await logDose({
+                                medication_id: medication.id!,
+                                scheduled_time: scheduledTime,
+                                actual_time: Math.floor(Date.now() / 1000),
+                                status: 'snoozed',
+                                notes: 'Snoozed for 10 minutes'
+                            });
+
+                            Alert.alert('Snoozed', 'Reminder snoozed for 10 minutes');
+                        } catch (error) {
+                            console.error('Error snoozing:', error);
+                            Alert.alert('Error', 'Failed to snooze reminder');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleSkip = async () => {
+        if (!medication || !medication.id) return;
+
+        Alert.alert(
+            'Skip Dose',
+            `Skip this dose of ${medication.name}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Skip',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            // Log dose as skipped
+                            const nextTime = medication.times[0];
+                            const scheduledTime = getScheduledTimeForToday(nextTime);
+
+                            await logDose({
+                                medication_id: medication.id!,
+                                scheduled_time: scheduledTime,
+                                actual_time: Math.floor(Date.now() / 1000),
+                                status: 'skipped',
+                                notes: 'Skipped from detail screen'
+                            });
+
+                            Alert.alert('Skipped', 'Dose marked as skipped');
+                        } catch (error) {
+                            console.error('Error skipping dose:', error);
+                            Alert.alert('Error', 'Failed to skip dose');
                         }
                     }
                 }
@@ -115,19 +231,19 @@ export default function MedicationDetailScreen() {
 
             {/* Quick Actions */}
             <View style={styles.quickActions}>
-                <Card style={styles.actionCard} onPress={() => {/* TODO: Log dose */ }}>
+                <Card style={styles.actionCard} onPress={handleTakeNow}>
                     <Ionicons name="checkmark-circle" size={32} color={colors.semantic.success} />
                     <AccessibleText variant="caption" style={styles.actionLabel}>
                         Take Now
                     </AccessibleText>
                 </Card>
-                <Card style={styles.actionCard} onPress={() => {/* TODO: Snooze */ }}>
+                <Card style={styles.actionCard} onPress={handleSnooze}>
                     <Ionicons name="time" size={32} color={colors.primary.orange} />
                     <AccessibleText variant="caption" style={styles.actionLabel}>
                         Snooze
                     </AccessibleText>
                 </Card>
-                <Card style={styles.actionCard} onPress={() => {/* TODO: Skip */ }}>
+                <Card style={styles.actionCard} onPress={handleSkip}>
                     <Ionicons name="close-circle" size={32} color={colors.neutral.gray500} />
                     <AccessibleText variant="caption" style={styles.actionLabel}>
                         Skip

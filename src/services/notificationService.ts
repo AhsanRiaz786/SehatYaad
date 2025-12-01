@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Medication, updateMedication } from '../database/helpers';
+import { Medication, updateMedication, logDose } from '../database/helpers';
+import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
 
 // Configure notification handler for foreground notifications
 Notifications.setNotificationHandler({
@@ -229,26 +230,63 @@ export function setupNotificationListeners(
     });
 
     // Listener for when user interacts with notification
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(async (response) => {
         console.log('Notification response:', response);
         const actionIdentifier = response.actionIdentifier;
         const data = response.notification.request.content.data;
 
         // Handle action buttons
         if (actionIdentifier === 'take') {
-            console.log(`User marked ${data.medicationName} as taken`);
-            // TODO: Log dose as taken in database
+            console.log(`✅ User marked ${data.medicationName} as taken from notification`);
+            try {
+                const scheduledTime = getScheduledTimeForToday(data.time as string);
+                await logDose({
+                    medication_id: data.medicationId as number,
+                    scheduled_time: scheduledTime,
+                    actual_time: Math.floor(Date.now() / 1000),
+                    status: 'taken',
+                    notes: 'Marked from notification'
+                });
+                console.log('✅ Dose logged as taken');
+            } catch (error) {
+                console.error('Error logging dose from notification:', error);
+            }
         } else if (actionIdentifier === 'snooze') {
-            console.log(`User snoozed ${data.medicationName}`);
-            snoozeNotification(
-                data.medicationId as number,
-                data.medicationName as string,
-                data.dosage as string,
-                10
-            );
+            console.log(`⏰ User snoozed ${data.medicationName}`);
+            try {
+                await snoozeNotification(
+                    data.medicationId as number,
+                    data.medicationName as string,
+                    data.dosage as string,
+                    10
+                );
+                const scheduledTime = getScheduledTimeForToday(data.time as string);
+                await logDose({
+                    medication_id: data.medicationId as number,
+                    scheduled_time: scheduledTime,
+                    actual_time: Math.floor(Date.now() / 1000),
+                    status: 'snoozed',
+                    notes: 'Snoozed from notification'
+                });
+                console.log('⏰ Dose logged as snoozed');
+            } catch (error) {
+                console.error('Error snoozing from notification:', error);
+            }
         } else if (actionIdentifier === 'skip') {
-            console.log(`User skipped ${data.medicationName}`);
-            // TODO: Log dose as skipped in database
+            console.log(`⏭️ User skipped ${data.medicationName}`);
+            try {
+                const scheduledTime = getScheduledTimeForToday(data.time as string);
+                await logDose({
+                    medication_id: data.medicationId as number,
+                    scheduled_time: scheduledTime,
+                    actual_time: Math.floor(Date.now() / 1000),
+                    status: 'skipped',
+                    notes: 'Skipped from notification'
+                });
+                console.log('⏭️ Dose logged as skipped');
+            } catch (error) {
+                console.error('Error skipping dose from notification:', error);
+            }
         }
 
         if (onNotificationResponse) {

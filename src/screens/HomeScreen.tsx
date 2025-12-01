@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const [medicationsWithStatus, setMedicationsWithStatus] = useState<MedicationWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<TimeBlock>>(new Set(['morning', 'noon', 'evening', 'night']));
+  const [refreshKey, setRefreshKey] = useState(0);
   const navigation = useNavigation<any>();
 
   const fetchData = async () => {
@@ -82,6 +83,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchData();
+      setRefreshKey(prev => prev + 1); // Refresh DailySummary when screen comes into focus
     }, [])
   );
 
@@ -103,7 +105,8 @@ export default function HomeScreen() {
           actual_time: Math.floor(Date.now() / 1000),
           status: 'taken',
         });
-        fetchData(); // Refresh
+        fetchData(); // Refresh medication list
+        setRefreshKey(prev => prev + 1); // Trigger DailySummary refresh
       }
     } catch (error) {
       console.error('Error marking dose:', error);
@@ -155,7 +158,7 @@ export default function HomeScreen() {
         }
       >
         {/* Daily Summary */}
-        <DailySummary />
+        <DailySummary refreshKey={refreshKey} />
 
         {/* Time Blocks */}
         {timeBlocks.map(block => {

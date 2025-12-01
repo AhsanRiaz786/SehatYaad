@@ -6,21 +6,35 @@ import AccessibleText from './AccessibleText';
 import { colors, spacing, layout } from '../utils/theme';
 import { getDailySummary } from '../database/helpers';
 
-export default function DailySummaryCard() {
+interface DailySummaryCardProps {
+    onRefresh?: () => void;
+    refreshKey?: number;
+}
+
+export default function DailySummaryCard({ refreshKey }: DailySummaryCardProps) {
     const [summary, setSummary] = useState({
         total: 0,
         taken: 0,
         missed: 0,
         pending: 0,
     });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadSummary();
-    }, []);
+    }, [refreshKey]); // Reload when refreshKey changes
 
     const loadSummary = async () => {
-        const data = await getDailySummary();
-        setSummary(data);
+        try {
+            setLoading(true);
+            const data = await getDailySummary();
+            console.log('📊 Daily Summary:', data);
+            setSummary(data);
+        } catch (error) {
+            console.error('Error loading daily summary:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const adherencePercentage = summary.total > 0
