@@ -12,6 +12,7 @@ export interface Medication {
     notes?: string;
     color?: string;
     notification_ids?: string[]; // stored as JSON
+    notification_sound?: string;
     created_at?: number;
 }
 
@@ -20,7 +21,8 @@ export interface Dose {
     medication_id: number;
     scheduled_time: number;
     actual_time?: number;
-    status: 'taken' | 'missed' | 'snoozed' | 'skipped';
+    status: 'taken' | 'missed' | 'snoozed' | 'skipped' | 'pending';
+    notes?: string;
 }
 
 // Medications CRUD
@@ -29,8 +31,8 @@ export const addMedication = async (medication: Medication) => {
     const timesJson = JSON.stringify(medication.times);
     const notificationIdsJson = medication.notification_ids ? JSON.stringify(medication.notification_ids) : null;
     const result = await db.runAsync(
-        'INSERT INTO medications (name, dosage, frequency, times, notes, color, notification_ids) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        medication.name, medication.dosage, medication.frequency, timesJson, medication.notes || '', medication.color || '', notificationIdsJson
+        'INSERT INTO medications (name, dosage, frequency, times, notes, color, notification_ids, notification_sound) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        medication.name, medication.dosage, medication.frequency, timesJson, medication.notes || '', medication.color || '', notificationIdsJson, medication.notification_sound || 'default'
     );
     return result.lastInsertRowId;
 };
@@ -68,6 +70,8 @@ export const updateMedication = async (id: number, medication: Partial<Medicatio
     if (medication.times) { fields.push('times = ?'); values.push(JSON.stringify(medication.times)); }
     if (medication.notes !== undefined) { fields.push('notes = ?'); values.push(medication.notes); }
     if (medication.color) { fields.push('color = ?'); values.push(medication.color); }
+    if (medication.notification_sound) { fields.push('notification_sound = ?'); values.push(medication.notification_sound); }
+    if (medication.notification_ids) { fields.push('notification_ids = ?'); values.push(JSON.stringify(medication.notification_ids)); }
 
     if (fields.length === 0) return;
 
@@ -88,15 +92,96 @@ export const deleteMedication = async (id: number) => {
 export const logDose = async (dose: Dose) => {
     const db = await getDB();
     const result = await db.runAsync(
-        'INSERT INTO doses (medication_id, scheduled_time, actual_time, status) VALUES (?, ?, ?, ?)',
-        dose.medication_id, dose.scheduled_time, dose.actual_time || null, dose.status
+        'INSERT INTO doses (medication_id, scheduled_time, actual_time, status, notes) VALUES (?, ?, ?, ?, ?)',
+        dose.medication_id, dose.scheduled_time, dose.actual_time || null, dose.status, dose.notes || null
     );
     return result.lastInsertRowId;
 };
 
-export const getDosesForMedication = async (medicationId: number) => {
+export const getDosesForMedication = async (medicationId: number): Promise<Dose[]> => {
     const db = await getDB();
-    return await db.getAllAsync('SELECT * FROM doses WHERE medication_id = ? ORDER BY scheduled_time DESC', medicationId);
+    return await db.getAllAsync<Dose>('SELECT * FROM doses WHERE medication_id = ? ORDER BY scheduled_time DESC', medicationId);
+};
+
+export const getTodaysDoses = async (): Promise<(Dose & { medication: Medication })[]> => {
+    const db = await getDB();
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const doses = await db.getAllAsync<any>(
+        `SELECT d.*, m.* FROM doses d 
+         JOIN medications m ON d.medication_id = m.id 
+         WHERE d.scheduled_time >= ? AND d.scheduled_time <= ?
+         ORDER BY d.scheduled_time ASC`,
+        Math.floor(startOfDay.getTime() / 1000),
+        Math.floor(endOfDay.getTime() / 1000)
+    );
+
+    return doses.map(row => ({
+        id: row.id,
+        medication_id: row.medication_id,
+        scheduled_time: row.scheduled_time,
+        actual_time: row.actual_time,
+        status: row.status,
+        notes: row.notes,
+        medication: {
+            id: row.medication_id,
+            name: row.name,
+            dosage: row.dosage,
+            frequency: row.frequency,
+            times: JSON.parse(row.times),
+            notes: row.notes,
+            color: row.color,
+            notification_ids: row.notification_ids ? JSON.parse(row.notification_ids) : [],
+            notification_sound: row.notification_sound,
+            created_at: row.created_at
+        }
+    }));
+};
+
+export const updateDoseStatus = async (doseId: number, status: Dose['status'], actualTime?: number, notes?: string) => {
+    const db = await getDB();
+    await db.runAsync(
+        'UPDATE doses SET status = ?, actual_time = ?, notes = ? WHERE id = ?',
+        status,
+        actualTime || null,
+        notes || null,
+        doseId
+    );
+};
+
+export const getDosesByDateRange = async (startDate: Date, endDate: Date): Promise<Dose[]> => {
+    const db = await getDB();
+    return await db.getAllAsync<Dose>(
+        'SELECT * FROM doses WHERE scheduled_time >= ? AND scheduled_time <= ? ORDER BY scheduled_time DESC',
+        Math.floor(startDate.getTime() / 1000),
+        Math.floor(endDate.getTime() / 1000)
+    );
+};
+
+export const getDailySummary = async (date: Date = new Date()): Promise<{ total: number; taken: number; missed: number; pending: number }> => {
+    const db = await getDB();
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const doses = await db.getAllAsync<Dose>(
+        'SELECT status FROM doses WHERE scheduled_time >= ? AND scheduled_time <= ?',
+        Math.floor(startOfDay.getTime() / 1000),
+        Math.floor(endOfDay.getTime() / 1000)
+    );
+
+    const summary = {
+        total: doses.length,
+        taken: doses.filter(d => d.status === 'taken').length,
+        missed: doses.filter(d => d.status === 'missed').length,
+        pending: doses.filter(d => d.status === 'pending').length
+    };
+
+    return summary;
 };
 
 // Adherence

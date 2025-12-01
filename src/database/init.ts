@@ -73,6 +73,13 @@ export async function initDatabase() {
         up: `
           ALTER TABLE medications ADD COLUMN notification_ids TEXT;
         `
+      },
+      {
+        version: 3,
+        up: `
+          ALTER TABLE doses ADD COLUMN notes TEXT;
+          ALTER TABLE medications ADD COLUMN notification_sound TEXT DEFAULT 'default';
+        `
       }
     ];
 
