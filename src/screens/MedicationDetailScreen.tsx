@@ -289,6 +289,8 @@ const styles = StyleSheet.create({
         marginTop: spacing.xs,
     },
     deleteButton: {
+        alignSelf: 'center',
+        width: '80%',
         marginHorizontal: spacing.m,
         marginTop: spacing.l,
     },
