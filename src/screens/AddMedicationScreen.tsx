@@ -7,11 +7,12 @@ import AccessibleText from '../components/AccessibleText';
 import AccessibleInput from '../components/AccessibleInput';
 import AccessibleButton from '../components/AccessibleButton';
 import Card from '../components/Card';
+import TimePicker from '../components/TimePicker';
 import { addMedication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { requestPermissions, scheduleMedicationNotifications } from '../services/notificationService';
 
-const FREQUENCIES = ['Daily', 'Twice Daily', 'Thrice Daily', 'Weekly', 'As Needed'];
+const FREQUENCIES = ['Daily', 'Twice Daily', 'Thrice Daily', 'Custom'];
 const COLORS = [
     { name: 'Red', value: '#FF5733' },
     { name: 'Green', value: '#33FF57' },
@@ -21,16 +22,26 @@ const COLORS = [
     { name: 'Pink', value: '#FF006E' },
 ];
 
+const NOTIFICATION_SOUNDS = [
+    { name: 'Default', value: 'default' },
+    { name: 'Gentle Bell', value: 'gentle_bell' },
+    { name: 'Soft Chime', value: 'soft_chime' },
+    { name: 'Alert', value: 'alert' },
+];
+
 export default function AddMedicationScreen() {
     const navigation = useNavigation();
     const [name, setName] = useState('');
     const [dosage, setDosage] = useState('');
     const [frequency, setFrequency] = useState(FREQUENCIES[0]);
+    const [customTimes, setCustomTimes] = useState<string[]>(['09:00']);
     const [notes, setNotes] = useState('');
     const [selectedColor, setSelectedColor] = useState(COLORS[3].value); // Purple default
+    const [selectedSound, setSelectedSound] = useState(NOTIFICATION_SOUNDS[0].value);
     const [loading, setLoading] = useState(false);
 
-    const getTimesForFrequency = (freq: string) => {
+    const getTimesForFrequency = (freq: string): string[] => {
+        if (freq === 'Custom') return customTimes;
         switch (freq) {
             case 'Daily': return ['09:00'];
             case 'Twice Daily': return ['09:00', '21:00'];
@@ -39,9 +50,38 @@ export default function AddMedicationScreen() {
         }
     };
 
+    const handleFrequencyChange = (freq: string) => {
+        setFrequency(freq);
+        if (freq === 'Custom' && customTimes.length === 0) {
+            setCustomTimes(['09:00']);
+        }
+    };
+
+    const addCustomTime = () => {
+        setCustomTimes([...customTimes, '09:00']);
+    };
+
+    const removeCustomTime = (index: number) => {
+        if (customTimes.length > 1) {
+            setCustomTimes(customTimes.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateCustomTime = (index: number, time: string) => {
+        const newTimes = [...customTimes];
+        newTimes[index] = time;
+        setCustomTimes(newTimes);
+    };
+
     const handleSave = async () => {
         if (!name.trim() || !dosage.trim()) {
             Alert.alert('Missing Information', 'Please fill in Medication Name and Dosage.');
+            return;
+        }
+
+        const times = getTimesForFrequency(frequency);
+        if (times.length === 0) {
+            Alert.alert('Missing Times', 'Please add at least one reminder time.');
             return;
         }
 
@@ -66,9 +106,10 @@ export default function AddMedicationScreen() {
                 name,
                 dosage,
                 frequency,
-                times: getTimesForFrequency(frequency),
+                times,
                 notes,
                 color: selectedColor,
+                notification_sound: selectedSound,
             };
 
             const medicationId = await addMedication(medicationData);
@@ -102,6 +143,7 @@ export default function AddMedicationScreen() {
                 times: getTimesForFrequency(frequency),
                 notes,
                 color: selectedColor,
+                notification_sound: selectedSound,
             });
             Alert.alert('Success', 'Medication added (without reminders)', [
                 { text: 'OK', onPress: () => navigation.goBack() }
@@ -133,7 +175,7 @@ export default function AddMedicationScreen() {
             {/* Form Card */}
             <Card style={styles.formCard}>
                 <AccessibleText variant="h3" style={styles.sectionTitle}>
-                    Medication Details
+                    Medication Information
                 </AccessibleText>
 
                 <AccessibleInput
@@ -166,7 +208,7 @@ export default function AddMedicationScreen() {
                                 styles.chip,
                                 frequency === freq && styles.chipSelected
                             ]}
-                            onPress={() => setFrequency(freq)}
+                            onPress={() => handleFrequencyChange(freq)}
                             accessibilityRole="button"
                             accessibilityLabel={`Frequency ${freq}`}
                         >
@@ -176,6 +218,64 @@ export default function AddMedicationScreen() {
                                 style={{ fontWeight: '600' }}
                             >
                                 {freq}
+                            </AccessibleText>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </Card>
+
+            {/* Custom Times Card */}
+            {frequency === 'Custom' && (
+                <Card style={styles.formCard}>
+                    <View style={styles.cardHeader}>
+                        <AccessibleText variant="h3">
+                            <Ionicons name="alarm" size={20} color={colors.primary.purple} /> Reminder Times
+                        </AccessibleText>
+                        <TouchableOpacity
+                            style={styles.addTimeButton}
+                            onPress={addCustomTime}
+                            accessibilityLabel="Add another time"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="add-circle" size={28} color={colors.primary.purple} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {customTimes.map((time, index) => (
+                        <TimePicker
+                            key={index}
+                            label={`Time ${index + 1}`}
+                            value={time}
+                            onChange={(newTime) => updateCustomTime(index, newTime)}
+                            onRemove={customTimes.length > 1 ? () => removeCustomTime(index) : undefined}
+                        />
+                    ))}
+                </Card>
+            )}
+
+            {/* Notification Sound Card */}
+            <Card style={styles.formCard}>
+                <AccessibleText variant="h3" style={styles.sectionTitle}>
+                    <Ionicons name="volume-high" size={20} color={colors.primary.purple} /> Notification Sound
+                </AccessibleText>
+                <View style={styles.chipContainer}>
+                    {NOTIFICATION_SOUNDS.map((sound) => (
+                        <TouchableOpacity
+                            key={sound.value}
+                            style={[
+                                styles.chip,
+                                selectedSound === sound.value && styles.chipSelected
+                            ]}
+                            onPress={() => setSelectedSound(sound.value)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Sound ${sound.name}`}
+                        >
+                            <AccessibleText
+                                variant="caption"
+                                color={selectedSound === sound.value ? colors.neutral.white : colors.neutral.gray700}
+                                style={{ fontWeight: '600' }}
+                            >
+                                {sound.name}
                             </AccessibleText>
                         </TouchableOpacity>
                     ))}
@@ -217,7 +317,7 @@ export default function AddMedicationScreen() {
                     onChangeText={setNotes}
                     multiline
                     numberOfLines={3}
-                    style={{ height: 100 }}
+                    style={{ height: 100, textAlignVertical: 'top', paddingTop: spacing.m }}
                     icon={<Ionicons name="document-text-outline" size={20} color={colors.neutral.gray500} />}
                 />
             </Card>
@@ -256,6 +356,7 @@ const styles = StyleSheet.create({
     formCard: {
         marginHorizontal: spacing.m,
         marginBottom: spacing.m,
+        padding: spacing.m,
     },
     sectionTitle: {
         marginBottom: spacing.m,
@@ -264,6 +365,15 @@ const styles = StyleSheet.create({
         color: colors.neutral.gray700,
         fontWeight: 'bold',
         alignItems: 'center',
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.m,
+    },
+    addTimeButton: {
+        padding: spacing.xs,
     },
     chipContainer: {
         flexDirection: 'row',
