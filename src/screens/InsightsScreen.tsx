@@ -1,54 +1,95 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import AccessibleText from '../components/AccessibleText';
-import Card from '../components/Card';
+import StatCard from '../components/analytics/StatCard';
+import AdherenceLineChart from '../components/analytics/AdherenceLineChart';
+import MedicationBarChart from '../components/analytics/MedicationBarChart';
+import TimeBlockPieChart from '../components/analytics/TimeBlockPieChart';
+import AdherenceCalendar from '../components/analytics/AdherenceCalendar';
 import { colors, spacing, layout } from '../utils/theme';
-import { getMedications } from '../database/helpers';
+import {
+    getAdherenceStats,
+    getMedicationStats,
+    getDailyAdherence,
+    getTimeBlockStats,
+    AdherenceStats,
+    MedicationStats,
+    DailyAdherence,
+    TimeBlockStats,
+} from '../services/analyticsService';
 
-const { width } = Dimensions.get('window');
-
-// Mock data for weekly adherence (until we have real history tracking)
-const WEEKLY_DATA = [
-    { day: 'Mon', value: 100, status: 'perfect' },
-    { day: 'Tue', value: 80, status: 'good' },
-    { day: 'Wed', value: 60, status: 'warning' },
-    { day: 'Thu', value: 100, status: 'perfect' },
-    { day: 'Fri', value: 90, status: 'good' },
-    { day: 'Sat', value: 40, status: 'poor' },
-    { day: 'Sun', value: 100, status: 'perfect' },
-];
+type TimeRange = 7 | 30;
 
 export default function InsightsScreen() {
-    const [stats, setStats] = useState({
-        totalMeds: 0,
-        adherence: 85,
-        streak: 5,
-        missed: 2
-    });
+    const [loading, setLoading] = useState(true);
+    const [timeRange, setTimeRange] = useState<TimeRange>(7);
+    const [stats, setStats] = useState<AdherenceStats | null>(null);
+    const [medicationStats, setMedicationStats] = useState<MedicationStats[]>([]);
+    const [dailyData, setDailyData] = useState<DailyAdherence[]>([]);
+    const [timeBlockStats, setTimeBlockStats] = useState<TimeBlockStats>({ morning: 0, noon: 0, evening: 0, night: 0 });
+    const [calendarData, setCalendarData] = useState<Map<string, number>>(new Map());
+
+    useFocusEffect(
+        React.useCallback(() => {
+            loadAnalytics();
+        }, [])
+    );
 
     useEffect(() => {
-        loadStats();
-    }, []);
+        loadAnalytics();
+    }, [timeRange]);
+    const loadAnalytics = async () => {
+        try {
+            setLoading(true);
 
-    const loadStats = async () => {
-        const meds = await getMedications();
-        setStats(prev => ({
-            ...prev,
-            totalMeds: meds.length
-        }));
+            // Load all analytics data
+            const [adherenceStats, medStats, daily, timeBlocks] = await Promise.all([
+                getAdherenceStats(timeRange),
+                getMedicationStats(timeRange),
+                getDailyAdherence(timeRange),
+                getTimeBlockStats(timeRange),
+            ]);
+
+            setStats(adherenceStats);
+            setMedicationStats(medStats);
+            setDailyData(daily);
+            setTimeBlockStats(timeBlocks);
+
+            // Build calendar data map
+            const calMap = new Map<string, number>();
+            daily.forEach(d => {
+                calMap.set(d.date, d.percentage);
+            });
+            setCalendarData(calMap);
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const getBarColor = (value: number) => {
-        if (value >= 90) return colors.semantic.success;
-        if (value >= 70) return colors.primary.teal;
-        if (value >= 50) return colors.primary.orange;
-        return colors.semantic.error;
+    const getTrendText = (trend: 'up' | 'down' | 'stable', diff: number) => {
+        switch (trend) {
+            case 'up':
+                return `+${diff.toFixed(1)}% this week`;
+            case 'down':
+                return `${diff.toFixed(1)}% this week`;
+            case 'stable':
+                return 'Stable';
+        }
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.content}
+            refreshControl={
+                <RefreshControl refreshing={loading} onRefresh={loadAnalytics} colors={[colors.primary.purple]} />
+            }
+        >
             {/* Header */}
             <LinearGradient
                 colors={colors.gradients.primary as [string, string, ...string[]]}
@@ -65,67 +106,100 @@ export default function InsightsScreen() {
                 </AccessibleText>
             </LinearGradient>
 
-            {/* Overview Cards */}
-            <View style={styles.statsGrid}>
-                <Card style={styles.statCard}>
-                    <View style={[styles.iconCircle, { backgroundColor: colors.primary.purple + '20' }]}>
-                        <Ionicons name="flame" size={24} color={colors.primary.purple} />
-                    </View>
-                    <AccessibleText variant="h2" style={styles.statValue}>{stats.streak}</AccessibleText>
-                    <AccessibleText variant="caption" color={colors.neutral.gray600}>Day Streak</AccessibleText>
-                </Card>
-
-                <Card style={styles.statCard}>
-                    <View style={[styles.iconCircle, { backgroundColor: colors.semantic.success + '20' }]}>
-                        <Ionicons name="checkmark-circle" size={24} color={colors.semantic.success} />
-                    </View>
-                    <AccessibleText variant="h2" style={styles.statValue}>{stats.adherence}%</AccessibleText>
-                    <AccessibleText variant="caption" color={colors.neutral.gray600}>Adherence</AccessibleText>
-                </Card>
-
-                <Card style={styles.statCard}>
-                    <View style={[styles.iconCircle, { backgroundColor: colors.semantic.error + '20' }]}>
-                        <Ionicons name="alert-circle" size={24} color={colors.semantic.error} />
-                    </View>
-                    <AccessibleText variant="h2" style={styles.statValue}>{stats.missed}</AccessibleText>
-                    <AccessibleText variant="caption" color={colors.neutral.gray600}>Missed</AccessibleText>
-                </Card>
+            {/* Time Range Selector */}
+            <View style={styles.rangeSelector}>
+                <TouchableOpacity
+                    style={[styles.rangeButton, timeRange === 7 && styles.rangeButtonActive]}
+                    onPress={() => setTimeRange(7)}
+                >
+                    <AccessibleText
+                        variant="button"
+                        color={timeRange === 7 ? colors.neutral.white : colors.primary.purple}
+                    >
+                        7 Days
+                    </AccessibleText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.rangeButton, timeRange === 30 && styles.rangeButtonActive]}
+                    onPress={() => setTimeRange(30)}
+                >
+                    <AccessibleText
+                        variant="button"
+                        color={timeRange === 30 ? colors.neutral.white : colors.primary.purple}
+                    >
+                        30 Days
+                    </AccessibleText>
+                </TouchableOpacity>
             </View>
 
-            {/* Weekly Chart */}
-            <Card style={styles.chartCard}>
-                <View style={styles.cardHeader}>
-                    <AccessibleText variant="h3">Weekly Overview</AccessibleText>
-                    <AccessibleText variant="caption" color={colors.neutral.gray600}>Last 7 Days</AccessibleText>
+            {/* Stats Cards */}
+            {stats && (
+                <View style={styles.statsContainer}>
+                    <StatCard
+                        icon="analytics"
+                        label="Overall Adherence"
+                        value={`${stats.overall}%`}
+                        trend={stats.trend}
+                        trendValue={getTrendText(stats.trend)}
+                        gradient={['#9D50BB', '#6E3CBC'] as [string, string]}
+                    />
+                    <StatCard
+                        icon="flame"
+                        label="Current Streak"
+                        value={`${stats.streakDays} days`}
+                        gradient={['#f59e0b', '#d97706'] as [string, string]}
+                    />
+                    <StatCard
+                        icon="trophy"
+                        label="Longest Streak"
+                        value={`${stats.longestStreak} days`}
+                        gradient={['#10b981', '#059669'] as [string, string]}
+                    />
                 </View>
+            )}
 
-                <View style={styles.chartContainer}>
-                    {WEEKLY_DATA.map((item, index) => (
-                        <View key={index} style={styles.barGroup}>
-                            <View style={styles.barTrack}>
-                                <LinearGradient
-                                    colors={[getBarColor(item.value), getBarColor(item.value) + '80']}
-                                    style={[styles.bar, { height: `${item.value}%` }]}
-                                />
-                            </View>
-                            <AccessibleText variant="small" style={styles.dayLabel}>
-                                {item.day}
-                            </AccessibleText>
-                        </View>
-                    ))}
+            {/* Adherence Timeline Chart */}
+            <AdherenceLineChart data={dailyData} days={timeRange} />
+
+            {/* Medication Performance */}
+            <MedicationBarChart medications={medicationStats} />
+
+            {/* Time Block Performance */}
+            <View style={{ paddingHorizontal: spacing.m }}>
+                <TimeBlockPieChart stats={timeBlockStats} />
+            </View>
+
+            {/* Adherence Calendar */}
+            <View style={{ paddingHorizontal: spacing.m }}>
+                <AdherenceCalendar adherenceData={calendarData} />
+            </View>
+
+            {/* Empty State */}
+            {!loading && dailyData.length === 0 && (
+                <View style={styles.emptyState}>
+                    <Ionicons name="analytics-outline" size={64} color={colors.neutral.gray400} />
+                    <AccessibleText variant="h3" color={colors.neutral.gray600} style={styles.emptyTitle}>
+                        No Data Yet
+                    </AccessibleText>
+                    <AccessibleText variant="body" color={colors.neutral.gray500} style={styles.emptyText}>
+                        Start taking your medications to see insights and analytics
+                    </AccessibleText>
                 </View>
-            </Card>
+            )}
 
-            {/* Tips Section */}
-            <Card style={styles.tipsCard}>
-                <View style={styles.cardHeader}>
+            {/* Health Tip */}
+            <View style={styles.tipCard}>
+                <View style={styles.tipHeader}>
                     <Ionicons name="bulb" size={24} color={colors.primary.orange} />
-                    <AccessibleText variant="h3" style={styles.cardTitle}>Health Tip</AccessibleText>
+                    <AccessibleText variant="h3" style={styles.tipTitle}>
+                        Health Tip
+                    </AccessibleText>
                 </View>
                 <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.tipText}>
-                    Taking your medication at the same time every day helps create a consistent routine and improves adherence.
+                    Taking your medication at the same time every day helps create a consistent routine and
+                    improves adherence by up to 30%.
                 </AccessibleText>
-            </Card>
+            </View>
         </ScrollView>
     );
 }
@@ -147,70 +221,55 @@ const styles = StyleSheet.create({
         marginTop: spacing.m,
         marginBottom: spacing.s,
     },
-    statsGrid: {
+    rangeSelector: {
         flexDirection: 'row',
         paddingHorizontal: spacing.m,
         gap: spacing.s,
         marginBottom: spacing.m,
     },
-    statCard: {
+    rangeButton: {
         flex: 1,
+        paddingVertical: spacing.m,
+        borderRadius: layout.borderRadius.medium,
+        borderWidth: 2,
+        borderColor: colors.primary.purple,
         alignItems: 'center',
-        padding: spacing.m,
+        backgroundColor: colors.neutral.white,
     },
-    iconCircle: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
+    rangeButtonActive: {
+        backgroundColor: colors.primary.purple,
+    },
+    statsContainer: {
+        paddingHorizontal: spacing.m,
+        gap: spacing.m,
+        marginBottom: spacing.m,
+    },
+    emptyState: {
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: spacing.xxl,
+        paddingHorizontal: spacing.l,
+    },
+    emptyTitle: {
+        marginTop: spacing.m,
         marginBottom: spacing.s,
     },
-    statValue: {
-        marginBottom: spacing.xs,
+    emptyText: {
+        textAlign: 'center',
     },
-    chartCard: {
+    tipCard: {
+        backgroundColor: colors.neutral.white,
+        borderRadius: layout.borderRadius.large,
+        padding: spacing.m,
         marginHorizontal: spacing.m,
+        ...layout.shadow.small,
+    },
+    tipHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: spacing.m,
-        padding: spacing.m,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.l,
-    },
-    chartContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        height: 150,
-        alignItems: 'flex-end',
-    },
-    barGroup: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    barTrack: {
-        width: 12,
-        height: '100%',
-        backgroundColor: colors.neutral.gray200,
-        borderRadius: 6,
-        justifyContent: 'flex-end',
-        overflow: 'hidden',
-    },
-    bar: {
-        width: '100%',
-        borderRadius: 6,
-    },
-    dayLabel: {
-        marginTop: spacing.s,
-        color: colors.neutral.gray600,
-    },
-    tipsCard: {
-        marginHorizontal: spacing.m,
-        padding: spacing.m,
-    },
-    cardTitle: {
+    tipTitle: {
         marginLeft: spacing.s,
     },
     tipText: {
