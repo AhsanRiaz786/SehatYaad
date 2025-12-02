@@ -36,18 +36,6 @@ export default function StatCard({
         }
     };
 
-    const getTrendColor = () => {
-        if (!trend) return colors.neutral.gray600;
-        switch (trend) {
-            case 'up':
-                return colors.semantic.success;
-            case 'down':
-                return colors.semantic.error;
-            case 'stable':
-                return colors.neutral.gray600;
-        }
-    };
-
     return (
         <View style={styles.container}>
             <LinearGradient
