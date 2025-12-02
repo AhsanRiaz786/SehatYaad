@@ -11,6 +11,7 @@ import TimePicker from '../components/TimePicker';
 import { addMedication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { requestPermissions, scheduleMedicationNotifications } from '../services/notificationService';
+import { useTTS } from '../context/TTSContext';
 
 const FREQUENCIES = ['Daily', 'Twice Daily', 'Thrice Daily', 'Custom'];
 const COLORS = [
@@ -39,6 +40,7 @@ export default function AddMedicationScreen() {
     const [selectedColor, setSelectedColor] = useState(COLORS[3].value); // Purple default
     const [selectedSound, setSelectedSound] = useState(NOTIFICATION_SOUNDS[0].value);
     const [loading, setLoading] = useState(false);
+    const { speak } = useTTS();
 
     const getTimesForFrequency = (freq: string): string[] => {
         if (freq === 'Custom') return customTimes;
@@ -76,12 +78,14 @@ export default function AddMedicationScreen() {
     const handleSave = async () => {
         if (!name.trim() || !dosage.trim()) {
             Alert.alert('Missing Information', 'Please fill in Medication Name and Dosage.');
+            speak("Please fill in Medication Name and Dosage.");
             return;
         }
 
         const times = getTimesForFrequency(frequency);
         if (times.length === 0) {
             Alert.alert('Missing Times', 'Please add at least one reminder time.');
+            speak("Please add at least one reminder time.");
             return;
         }
 
@@ -126,6 +130,7 @@ export default function AddMedicationScreen() {
             Alert.alert('Success', 'Medication added with reminders!', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
+            speak("Medication added successfully");
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Failed to save medication');

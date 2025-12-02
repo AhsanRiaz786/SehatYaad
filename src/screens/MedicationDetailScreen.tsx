@@ -10,6 +10,7 @@ import { getMedicationById, deleteMedication, Medication, logDose } from '../dat
 import { colors, spacing, layout } from '../utils/theme';
 import { cancelMedicationNotifications, snoozeNotification } from '../services/notificationService';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
+import { useTTS } from '../context/TTSContext';
 
 type ParamList = {
     MedicationDetail: { medicationId: number };
@@ -21,6 +22,7 @@ export default function MedicationDetailScreen() {
     const { medicationId } = route.params;
     const [medication, setMedication] = useState<Medication | null>(null);
     const [loading, setLoading] = useState(true);
+    const { speak } = useTTS();
 
     useEffect(() => {
         fetchMedication();
@@ -56,6 +58,7 @@ export default function MedicationDetailScreen() {
                             }
 
                             await deleteMedication(medicationId);
+                            speak("Medication deleted");
                             navigation.goBack();
                         } catch (error) {
                             Alert.alert('Error', 'Failed to delete medication');
@@ -92,6 +95,7 @@ export default function MedicationDetailScreen() {
                             });
 
                             Alert.alert('Success', 'Dose marked as taken!');
+                            speak("Medication marked as taken");
                         } catch (error) {
                             console.error('Error logging dose:', error);
                             Alert.alert('Error', 'Failed to log dose');
@@ -138,6 +142,7 @@ export default function MedicationDetailScreen() {
                             });
 
                             Alert.alert('Snoozed', 'Reminder snoozed for 10 minutes');
+                            speak("Reminder snoozed for 10 minutes");
                         } catch (error) {
                             console.error('Error snoozing:', error);
                             Alert.alert('Error', 'Failed to snooze reminder');
@@ -174,6 +179,7 @@ export default function MedicationDetailScreen() {
                             });
 
                             Alert.alert('Skipped', 'Dose marked as skipped');
+                            speak("Dose marked as skipped");
                         } catch (error) {
                             console.error('Error skipping dose:', error);
                             Alert.alert('Error', 'Failed to skip dose');
