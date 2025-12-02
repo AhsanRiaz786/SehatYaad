@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import Constants from 'expo-constants';
 
 export interface ExtractedMedication {
     name: string;
@@ -20,7 +21,7 @@ export interface PrescriptionData {
 // Get backend URL from environment variable
 // For local development: http://localhost:5000
 // For production: your deployed backend URL
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.7.40.68:8000';
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'http://127.0.0.1:8000';
 
 export async function extractPrescriptionData(
     imageUri: string
