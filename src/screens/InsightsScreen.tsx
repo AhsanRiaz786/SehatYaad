@@ -35,9 +35,12 @@ export default function InsightsScreen() {
     useFocusEffect(
         React.useCallback(() => {
             loadAnalytics();
-        }, [timeRange])
+        }, [])
     );
 
+    useEffect(() => {
+        loadAnalytics();
+    }, [timeRange]);
     const loadAnalytics = async () => {
         try {
             setLoading(true);
