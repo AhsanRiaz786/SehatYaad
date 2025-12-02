@@ -280,29 +280,36 @@ export async function getTimeBlockStats(days: number = 30): Promise<TimeBlockSta
             [startTime, now]
         );
 
-        const stats: TimeBlockStats = {
-            morning: 0,
-            noon: 0,
-            evening: 0,
-            night: 0,
+        // Aggregate taken/total per time block
+        const blockTotals = {
+            morning: { taken: 0, total: 0 },
+            noon: { taken: 0, total: 0 },
+            evening: { taken: 0, total: 0 },
+            night: { taken: 0, total: 0 },
         };
 
-        // Simple time block categorization
         results.forEach(row => {
             const hour = parseInt(row.time.split(':')[0]);
-            const adherence = row.total ? Math.round((row.taken / row.total) * 100) : 0;
-
+            let block: keyof typeof blockTotals;
             if (hour >= 6 && hour < 12) {
-                stats.morning = Math.max(stats.morning, adherence);
+                block = 'morning';
             } else if (hour >= 12 && hour < 17) {
-                stats.noon = Math.max(stats.noon, adherence);
+                block = 'noon';
             } else if (hour >= 17 && hour < 21) {
-                stats.evening = Math.max(stats.evening, adherence);
+                block = 'evening';
             } else {
-                stats.night = Math.max(stats.night, adherence);
+                block = 'night';
             }
+            blockTotals[block].taken += row.taken;
+            blockTotals[block].total += row.total;
         });
 
+        const stats: TimeBlockStats = {
+            morning: blockTotals.morning.total ? Math.round((blockTotals.morning.taken / blockTotals.morning.total) * 100) : 0,
+            noon: blockTotals.noon.total ? Math.round((blockTotals.noon.taken / blockTotals.noon.total) * 100) : 0,
+            evening: blockTotals.evening.total ? Math.round((blockTotals.evening.taken / blockTotals.evening.total) * 100) : 0,
+            night: blockTotals.night.total ? Math.round((blockTotals.night.taken / blockTotals.night.total) * 100) : 0,
+        };
         return stats;
     } catch (error) {
         console.error('Error getting time block stats:', error);
