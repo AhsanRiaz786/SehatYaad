@@ -68,12 +68,12 @@ export default function InsightsScreen() {
         }
     };
 
-    const getTrendText = (trend: 'up' | 'down' | 'stable') => {
+    const getTrendText = (trend: 'up' | 'down' | 'stable', diff: number) => {
         switch (trend) {
             case 'up':
-                return '+5% this week';
+                return `+${diff.toFixed(1)}% this week`;
             case 'down':
-                return '-5% this week';
+                return `${diff.toFixed(1)}% this week`;
             case 'stable':
                 return 'Stable';
         }
