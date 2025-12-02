@@ -1,13 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // 1. Direct access via process.env
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
     console.error('❌ Missing API Key. check your .env file!');
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY || '');
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 // 2. Use the correct model for handwriting
 export const model = genAI.getGenerativeModel({

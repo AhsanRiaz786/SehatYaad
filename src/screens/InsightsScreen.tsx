@@ -71,12 +71,12 @@ export default function InsightsScreen() {
         }
     };
 
-    const getTrendText = (trend: 'up' | 'down' | 'stable', diff: number) => {
+    const getTrendText = (trend: 'up' | 'down' | 'stable') => {
         switch (trend) {
             case 'up':
-                return `+${diff.toFixed(1)}% this week`;
+                return 'Improving';
             case 'down':
-                return `${diff.toFixed(1)}% this week`;
+                return 'Declining';
             case 'stable':
                 return 'Stable';
         }
