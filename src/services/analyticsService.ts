@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { DATABASE_NAME } from '../database/init';
+import { DATABASE_NAME, getDatabase } from '../database/init';
 
 export interface AdherenceStats {
     overall: number;          // Overall adherence %
@@ -40,7 +40,7 @@ export interface TimeBlockStats {
  */
 export async function getAdherenceStats(days: number = 30): Promise<AdherenceStats> {
     try {
-        const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+        const db = await getDatabase();
         const now = Math.floor(Date.now() / 1000);
         const startTime = now - (days * 24 * 60 * 60);
 
@@ -121,7 +121,7 @@ export async function getAdherenceStats(days: number = 30): Promise<AdherenceSta
  */
 export async function getMedicationStats(days: number = 30): Promise<MedicationStats[]> {
     try {
-        const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+        const db = await getDatabase();
         const now = Math.floor(Date.now() / 1000);
         const startTime = now - (days * 24 * 60 * 60);
 
@@ -168,7 +168,7 @@ export async function getMedicationStats(days: number = 30): Promise<MedicationS
  */
 export async function getDailyAdherence(days: number = 30): Promise<DailyAdherence[]> {
     try {
-        const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+        const db = await getDatabase();
         const now = Math.floor(Date.now() / 1000);
         const startTime = now - (days * 24 * 60 * 60);
 
@@ -208,7 +208,7 @@ export async function getDailyAdherence(days: number = 30): Promise<DailyAdheren
  */
 export async function calculateStreak(): Promise<{ current: number; longest: number }> {
     try {
-        const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+        const db = await getDatabase();
         const now = Math.floor(Date.now() / 1000);
 
         // Get all days with doses (going back 90 days max)
@@ -260,7 +260,7 @@ export async function calculateStreak(): Promise<{ current: number; longest: num
  */
 export async function getTimeBlockStats(days: number = 30): Promise<TimeBlockStats> {
     try {
-        const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+        const db = await getDatabase();
         const now = Math.floor(Date.now() / 1000);
         const startTime = now - (days * 24 * 60 * 60);
 
