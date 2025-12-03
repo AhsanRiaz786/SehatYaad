@@ -2,6 +2,8 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Medication, updateMedication, logDose } from '../database/helpers';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
+import { tts } from '../utils/tts';
+import { playSuccessSound } from '../utils/sounds';
 
 // Configure notification handler for foreground notifications
 Notifications.setNotificationHandler({
@@ -254,6 +256,13 @@ export function setupNotificationListeners(
                     notes: 'Marked from notification'
                 });
                 console.log('✅ Dose logged as taken');
+
+                // Voice feedback
+                tts.speak(`${data.medicationName} marked as taken`, { rate: 1.0 });
+
+                // Play success sound
+                playSuccessSound();
+
                 // Dismiss the notification
                 await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
@@ -278,6 +287,10 @@ export function setupNotificationListeners(
                     notes: 'Snoozed from notification'
                 });
                 console.log('⏰ Dose logged as snoozed');
+
+                // Voice feedback
+                tts.speak('Reminder snoozed for 10 minutes', { rate: 1.0 });
+
                 // Dismiss the notification
                 await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
@@ -295,10 +308,14 @@ export function setupNotificationListeners(
                     notes: 'Skipped from notification'
                 });
                 console.log('⏭️ Dose logged as skipped');
+
+                // Voice feedback
+                tts.speak('Dose skipped', { rate: 1.0 });
+
                 // Dismiss the notification
                 await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
-                console.error('Error skipping dose from notification:', error);
+                console.error('Error logging skipped dose:', error);
             }
         }
 

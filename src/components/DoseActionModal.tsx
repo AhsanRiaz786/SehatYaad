@@ -7,6 +7,8 @@ import AccessibleText from './AccessibleText';
 import { colors, spacing, layout } from '../utils/theme';
 import { Medication, logDose } from '../database/helpers';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
+import { useTTS } from '../context/TTSContext';
+import { playSuccessSound } from '../utils/sounds';
 
 interface DoseActionModalProps {
     visible: boolean;
@@ -28,6 +30,7 @@ export default function DoseActionModal({
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [notes, setNotes] = useState('');
     const [processing, setProcessing] = useState(false);
+    const { speak } = useTTS();
 
     const handleAction = async (action: 'taken' | 'missed' | 'skipped', customTimestamp?: number) => {
         if (processing) return;
@@ -46,6 +49,16 @@ export default function DoseActionModal({
             });
 
             console.log(`✅ Logged dose as ${action} for ${medication.name}`);
+
+            // Voice feedback and sound
+            if (action === 'taken') {
+                speak(`${medication.name} marked as taken`);
+                playSuccessSound();
+            } else if (action === 'missed') {
+                speak(`Dose marked as missed`);
+            } else if (action === 'skipped') {
+                speak(`Dose skipped`);
+            }
 
             // Reset state
             setNotes('');
