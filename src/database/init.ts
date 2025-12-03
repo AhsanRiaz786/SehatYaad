@@ -2,9 +2,19 @@ import * as SQLite from 'expo-sqlite';
 
 export const DATABASE_NAME = 'sehatyaad.db';
 
+let dbInstance: SQLite.SQLiteDatabase | null = null;
+
+export const getDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
+  if (dbInstance) {
+    return dbInstance;
+  }
+  dbInstance = await SQLite.openDatabaseAsync(DATABASE_NAME);
+  return dbInstance;
+};
+
 export async function initDatabase() {
   try {
-    const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+    const db = await getDatabase();
 
     // Create migrations table if not exists
     await db.execAsync(`
