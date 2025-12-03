@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
-import { DATABASE_NAME } from './init';
+import { DATABASE_NAME, getDatabase } from './init';
 
-const getDB = async () => await SQLite.openDatabaseAsync(DATABASE_NAME);
+const getDB = async () => await getDatabase();
 
 export interface Medication {
     id?: number;
