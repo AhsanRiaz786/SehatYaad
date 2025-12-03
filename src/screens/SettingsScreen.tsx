@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
+import Slider from '@react-native-community/slider';
+import { useTTS } from '../context/TTSContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AccessibleButton from '../components/AccessibleButton';
@@ -12,6 +14,7 @@ import * as Notifications from 'expo-notifications';
 
 export default function SettingsScreen() {
     const [permissionsGranted, setPermissionsGranted] = useState(false);
+    const { enabled, setEnabled, rate, setRate, pitch, setPitch, volume, setVolume, speak } = useTTS();
 
     useEffect(() => {
         checkPermissions();
@@ -79,6 +82,87 @@ export default function SettingsScreen() {
                     Manage your preferences
                 </AccessibleText>
             </LinearGradient>
+
+            {/* Voice Feedback Section */}
+            <Card style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <Ionicons name="mic" size={24} color={colors.primary.blue} />
+                    <AccessibleText variant="h3" style={styles.sectionTitle}>
+                        Voice Feedback
+                    </AccessibleText>
+                    <Switch
+                        value={enabled}
+                        onValueChange={setEnabled}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.blue }}
+                        thumbColor={colors.neutral.white}
+                    />
+                </View>
+
+                {enabled && (
+                    <>
+                        <View style={styles.settingRow}>
+                            <AccessibleText variant="body" color={colors.neutral.gray700}>
+                                Speech Rate: {rate.toFixed(1)}x
+                            </AccessibleText>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={0.5}
+                                maximumValue={2.0}
+                                step={0.1}
+                                value={rate}
+                                onSlidingComplete={setRate}
+                                minimumTrackTintColor={colors.primary.blue}
+                                maximumTrackTintColor={colors.neutral.gray300}
+                                thumbTintColor={colors.primary.blue}
+                            />
+                        </View>
+
+                        <View style={styles.settingRow}>
+                            <AccessibleText variant="body" color={colors.neutral.gray700}>
+                                Pitch: {pitch.toFixed(1)}
+                            </AccessibleText>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={0.5}
+                                maximumValue={2.0}
+                                step={0.1}
+                                value={pitch}
+                                onSlidingComplete={setPitch}
+                                minimumTrackTintColor={colors.primary.blue}
+                                maximumTrackTintColor={colors.neutral.gray300}
+                                thumbTintColor={colors.primary.blue}
+                            />
+                        </View>
+
+                        <View style={styles.settingRow}>
+                            <AccessibleText variant="body" color={colors.neutral.gray700}>
+                                Volume: {Math.round(volume * 100)}%
+                            </AccessibleText>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={0.0}
+                                maximumValue={1.0}
+                                step={0.1}
+                                value={volume}
+                                onSlidingComplete={setVolume}
+                                minimumTrackTintColor={colors.primary.blue}
+                                maximumTrackTintColor={colors.neutral.gray300}
+                                thumbTintColor={colors.primary.blue}
+                            />
+                        </View>
+
+                        <AccessibleButton
+                            title="Test Voice Settings"
+                            onPress={() => speak("This is a test of the voice settings.", true)}
+                            variant="outline"
+                            size="small"
+                            icon={<Ionicons name="play-circle-outline" size={16} color={colors.primary.blue} />}
+                            iconPosition="left"
+                            style={{ marginTop: spacing.m }}
+                        />
+                    </>
+                )}
+            </Card>
 
             {/* Notifications Section */}
             <Card style={styles.section}>
@@ -282,5 +366,12 @@ const styles = StyleSheet.create({
     copyright: {
         textAlign: 'center',
         marginTop: spacing.s,
+    },
+    settingRow: {
+        marginBottom: spacing.m,
+    },
+    slider: {
+        width: '100%',
+        height: 40,
     },
 });

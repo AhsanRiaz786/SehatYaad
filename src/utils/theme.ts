@@ -8,6 +8,7 @@ export const colors = {
         purple: '#7209B7',
         pink: '#FF006E',
         orange: '#FF9E00',
+        blue: '#3B82F6',
     },
 
     // Gradient Definitions (for use with LinearGradient)
