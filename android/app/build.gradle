@@ -120,6 +120,18 @@ android {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
         }
+        resources {
+            pickFirsts += ['META-INF/androidx.*']
+            pickFirsts += ['META-INF/proguard/**']
+            excludes += ['META-INF/androidx.customview_customview.version']
+            excludes += ['META-INF/DEPENDENCIES']
+            excludes += ['META-INF/LICENSE']
+            excludes += ['META-INF/LICENSE.txt']
+            excludes += ['META-INF/license.txt']
+            excludes += ['META-INF/NOTICE']
+            excludes += ['META-INF/NOTICE.txt']
+            excludes += ['META-INF/notice.txt']
+        }
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -149,6 +161,15 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    
+    // Exclude old support libraries to avoid conflicts with AndroidX
+    configurations.all {
+        exclude group: 'com.android.support', module: 'support-compat'
+        exclude group: 'com.android.support', module: 'support-core-utils'
+        exclude group: 'com.android.support', module: 'support-fragment'
+        exclude group: 'com.android.support', module: 'support-media-compat'
+        exclude group: 'com.android.support', module: 'support-v4'
+    }
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
