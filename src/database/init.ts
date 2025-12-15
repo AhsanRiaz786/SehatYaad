@@ -90,6 +90,43 @@ export async function initDatabase() {
           ALTER TABLE doses ADD COLUMN notes TEXT;
           ALTER TABLE medications ADD COLUMN notification_sound TEXT DEFAULT 'default';
         `
+      },
+      {
+        version: 4,
+        up: `
+          -- Stores learned adherence patterns per medication and time slot
+          CREATE TABLE IF NOT EXISTS reminder_patterns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            medication_id INTEGER NOT NULL,
+            time_slot TEXT NOT NULL, -- "HH:MM"
+            on_time_rate REAL DEFAULT 0,
+            miss_rate REAL DEFAULT 0,
+            snooze_rate REAL DEFAULT 0,
+            avg_delay_minutes REAL DEFAULT 0,
+            recommended_time TEXT, -- "HH:MM", nullable if no change recommended
+            sample_size INTEGER DEFAULT 0,
+            last_computed_at INTEGER DEFAULT (strftime('%s', 'now')),
+            UNIQUE (medication_id, time_slot),
+            FOREIGN KEY (medication_id) REFERENCES medications (id)
+          );
+
+          -- Audit log for applied schedule adjustments
+          CREATE TABLE IF NOT EXISTS schedule_adjustments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            medication_id INTEGER NOT NULL,
+            old_time TEXT NOT NULL,
+            new_time TEXT NOT NULL,
+            reason TEXT,
+            changed_at INTEGER DEFAULT (strftime('%s', 'now')),
+            FOREIGN KEY (medication_id) REFERENCES medications (id)
+          );
+
+          -- Settings flags for adaptive behavior
+          INSERT OR IGNORE INTO user_settings (setting_key, setting_value)
+          VALUES
+            ('adaptive_enabled', 'true'),
+            ('prealerts_enabled', 'true');
+        `
       }
     ];
 
