@@ -144,6 +144,12 @@ export default function InsightsScreen() {
                         gradient={['#9D50BB', '#6E3CBC'] as [string, string]}
                     />
                     <StatCard
+                        icon="calendar"
+                        label="Last 7 Days"
+                        value={`${stats.weeklyAverage}%`}
+                        gradient={['#3b82f6', '#1d4ed8'] as [string, string]}
+                    />
+                    <StatCard
                         icon="flame"
                         label="Current Streak"
                         value={`${stats.streakDays} days`}
@@ -155,6 +161,38 @@ export default function InsightsScreen() {
                         value={`${stats.longestStreak} days`}
                         gradient={['#10b981', '#059669'] as [string, string]}
                     />
+                    <StatCard
+                        icon="alert-circle"
+                        label="Missed Doses"
+                        value={stats.missedDoses}
+                        gradient={['#ef4444', '#b91c1c'] as [string, string]}
+                    />
+                </View>
+            )}
+
+            {/* Best / Worst Day Summary */}
+            {stats && (stats.bestDay || stats.worstDay) && (
+                <View style={styles.summaryContainer}>
+                    {stats.bestDay && (
+                        <View style={styles.summaryItem}>
+                            <AccessibleText variant="caption" color={colors.neutral.gray600}>
+                                Best Day
+                            </AccessibleText>
+                            <AccessibleText variant="body" style={styles.summaryValue}>
+                                {stats.bestDay.percentage}% on {stats.bestDay.date}
+                            </AccessibleText>
+                        </View>
+                    )}
+                    {stats.worstDay && (
+                        <View style={styles.summaryItem}>
+                            <AccessibleText variant="caption" color={colors.neutral.gray600}>
+                                Toughest Day
+                            </AccessibleText>
+                            <AccessibleText variant="body" style={styles.summaryValue}>
+                                {stats.worstDay.percentage}% on {stats.worstDay.date}
+                            </AccessibleText>
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -243,6 +281,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.m,
         gap: spacing.m,
         marginBottom: spacing.m,
+    },
+    summaryContainer: {
+        backgroundColor: colors.neutral.white,
+        borderRadius: layout.borderRadius.large,
+        padding: spacing.m,
+        marginHorizontal: spacing.m,
+        marginBottom: spacing.m,
+        ...layout.shadow.small,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: spacing.m,
+    },
+    summaryItem: {
+        flex: 1,
+    },
+    summaryValue: {
+        marginTop: spacing.xs,
+        fontWeight: '600',
     },
     emptyState: {
         alignItems: 'center',
