@@ -2,12 +2,21 @@ import * as SQLite from 'expo-sqlite';
 import { DATABASE_NAME, getDatabase } from '../database/init';
 
 export interface AdherenceStats {
-    overall: number;          // Overall adherence %
-    weeklyAverage: number;    // This week's average
-    monthlyAverage: number;   // This month's average
+    overall: number;          // Overall adherence % over selected period
+    weeklyAverage: number;    // Last 7 days average
+    monthlyAverage: number;   // This month's average (currently same as overall window)
     trend: 'up' | 'down' | 'stable';
     streakDays: number;       // Current streak
     longestStreak: number;    // Best streak ever
+    missedDoses: number;      // Total missed doses in selected period
+    bestDay?: {
+        date: string;
+        percentage: number;
+    };
+    worstDay?: {
+        date: string;
+        percentage: number;
+    };
 }
 
 export interface MedicationStats {
@@ -45,9 +54,10 @@ export async function getAdherenceStats(days: number = 30): Promise<AdherenceSta
         const startTime = now - (days * 24 * 60 * 60);
 
         // Get overall stats
-        const overallResult = await db.getFirstAsync<{ taken: number; total: number }>(
+        const overallResult = await db.getFirstAsync<{ taken: number; total: number; missed: number }>(
             `SELECT 
         COUNT(CASE WHEN status = 'taken' THEN 1 END) as taken,
+        COUNT(CASE WHEN status = 'missed' THEN 1 END) as missed,
         COUNT(*) as total
       FROM doses
       WHERE scheduled_time >= ? AND scheduled_time <= ?`,
@@ -57,6 +67,7 @@ export async function getAdherenceStats(days: number = 30): Promise<AdherenceSta
         const overall = overallResult?.total
             ? Math.round((overallResult.taken / overallResult.total) * 100)
             : 0;
+        const missedDoses = overallResult?.missed ?? 0;
 
         // Get weekly stats (last 7 days)
         const weekStart = now - (7 * 24 * 60 * 60);
@@ -95,6 +106,22 @@ export async function getAdherenceStats(days: number = 30): Promise<AdherenceSta
         // Calculate streaks
         const streaks = await calculateStreak();
 
+        // Get daily adherence to determine best and worst days within the window
+        const daily = await getDailyAdherence(days);
+        let bestDay: { date: string; percentage: number } | undefined;
+        let worstDay: { date: string; percentage: number } | undefined;
+
+        if (daily.length > 0) {
+            bestDay = daily.reduce((best, current) =>
+                current.percentage > best.percentage ? current : best
+            );
+
+            // Only consider days that actually had doses scheduled (total > 0 -> percentage > 0 or could be 0)
+            worstDay = daily.reduce((worst, current) =>
+                current.percentage < worst.percentage ? current : worst
+            );
+        }
+
         return {
             overall,
             weeklyAverage,
@@ -102,6 +129,9 @@ export async function getAdherenceStats(days: number = 30): Promise<AdherenceSta
             trend,
             streakDays: streaks.current,
             longestStreak: streaks.longest,
+            missedDoses,
+            bestDay,
+            worstDay,
         };
     } catch (error) {
         console.error('Error calculating adherence stats:', error);
@@ -112,6 +142,7 @@ export async function getAdherenceStats(days: number = 30): Promise<AdherenceSta
             trend: 'stable',
             streakDays: 0,
             longestStreak: 0,
+            missedDoses: 0,
         };
     }
 }
