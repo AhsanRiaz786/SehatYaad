@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Medication, updateMedication, logDose } from '../database/helpers';
+import { getDatabase } from '../database/init';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
 import { tts } from '../utils/tts';
 import { playSuccessSound } from '../utils/sounds';
@@ -94,6 +95,24 @@ export async function scheduleMedicationNotifications(
         console.log(`Times:`, medication.times);
 
         const notificationIds: string[] = [];
+        const db = await getDatabase();
+
+        // Check if predictive pre-alerts are enabled
+        const settingsRow = await db.getFirstAsync<{ setting_value: string }>(
+            'SELECT setting_value FROM user_settings WHERE setting_key = ?',
+            'prealerts_enabled'
+        );
+        const prealertsEnabled = settingsRow ? settingsRow.setting_value === 'true' : true;
+
+        // Load learned patterns (if any) for this medication
+        const patterns = await db.getAllAsync<{
+            time_slot: string;
+            miss_rate: number;
+            snooze_rate: number;
+        }>(
+            'SELECT time_slot, miss_rate, snooze_rate FROM reminder_patterns WHERE medication_id = ?',
+            medication.id
+        );
 
         for (const time of medication.times) {
             const [hours, minutes] = time.split(':').map(Number);
@@ -125,6 +144,43 @@ export async function scheduleMedicationNotifications(
 
             notificationIds.push(notificationId);
             console.log(`✅ Scheduled notification ${notificationId} for ${medication.name} at ${hours}:${minutes}`);
+
+            // Optionally schedule a predictive pre-alert before this dose
+            if (prealertsEnabled) {
+                const pattern = patterns.find(p => p.time_slot === time);
+                if (pattern && (pattern.miss_rate >= 0.3 || pattern.snooze_rate >= 0.5)) {
+                    const preAlertMinutes = 15;
+                    const preAlertHourMinute = (hours * 60 + minutes - preAlertMinutes + 24 * 60) % (24 * 60);
+                    const preHour = Math.floor(preAlertHourMinute / 60);
+                    const preMinute = preAlertHourMinute % 60;
+
+                    const preId = await Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: `⏰ Coming up: ${medication.name}`,
+                            body: `You often miss or snooze this dose. Get ready to take ${medication.dosage} soon.`,
+                            sound: medication.notification_sound || 'default',
+                            priority: Notifications.AndroidNotificationPriority.DEFAULT,
+                            data: {
+                                medicationId: medication.id,
+                                medicationName: medication.name,
+                                dosage: medication.dosage,
+                                time: time,
+                                prealert: true,
+                            },
+                            categoryIdentifier: 'medication-reminder',
+                        },
+                        trigger: {
+                            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                            channelId: 'medication-reminders',
+                            hour: preHour,
+                            minute: preMinute,
+                        },
+                    });
+
+                    notificationIds.push(preId);
+                    console.log(`🔔 Scheduled pre-alert ${preId} for ${medication.name} at ${preHour}:${preMinute}`);
+                }
+            }
         }
 
         // Update medication with notification IDs

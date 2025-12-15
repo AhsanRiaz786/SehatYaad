@@ -10,6 +10,7 @@ import MedicationBarChart from '../components/analytics/MedicationBarChart';
 import TimeBlockPieChart from '../components/analytics/TimeBlockPieChart';
 import AdherenceCalendar from '../components/analytics/AdherenceCalendar';
 import { colors, spacing, layout } from '../utils/theme';
+import { applyScheduleRecommendation, getScheduleRecommendations, ScheduleRecommendation } from '../services/adaptiveReminderService';
 import {
     getAdherenceStats,
     getMedicationStats,
@@ -31,6 +32,8 @@ export default function InsightsScreen() {
     const [dailyData, setDailyData] = useState<DailyAdherence[]>([]);
     const [timeBlockStats, setTimeBlockStats] = useState<TimeBlockStats>({ morning: 0, noon: 0, evening: 0, night: 0 });
     const [calendarData, setCalendarData] = useState<Map<string, number>>(new Map());
+    const [recommendations, setRecommendations] = useState<ScheduleRecommendation[]>([]);
+    const [applyingId, setApplyingId] = useState<string | null>(null);
 
     useFocusEffect(
         React.useCallback(() => {
@@ -64,10 +67,27 @@ export default function InsightsScreen() {
                 calMap.set(d.date, d.percentage);
             });
             setCalendarData(calMap);
+
+            // Load adaptive reminder recommendations
+            const recs = await getScheduleRecommendations();
+            setRecommendations(recs);
         } catch (error) {
             console.error('Error loading analytics:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleApplyRecommendation = async (rec: ScheduleRecommendation) => {
+        try {
+            const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}`;
+            setApplyingId(key);
+            await applyScheduleRecommendation(rec);
+            await loadAnalytics();
+        } catch (error) {
+            console.error('Error applying schedule recommendation:', error);
+        } finally {
+            setApplyingId(null);
         }
     };
 
@@ -212,6 +232,50 @@ export default function InsightsScreen() {
                 <AdherenceCalendar adherenceData={calendarData} />
             </View>
 
+            {/* Adaptive Reminder Suggestions (read-only for now, accept UI can be added later) */}
+            {recommendations.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                    <AccessibleText variant="h3" style={styles.suggestionsTitle}>
+                        Smart Reminder Suggestions
+                    </AccessibleText>
+                    {recommendations.map((rec, index) => {
+                        const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}-${index}`;
+                        return (
+                        <View key={key} style={styles.suggestionCard}>
+                            <AccessibleText variant="body" style={styles.suggestionText}>
+                                For <AccessibleText variant="body" style={{ fontWeight: '700' }}>{rec.medication.name}</AccessibleText>, you often struggle with the
+                                <AccessibleText variant="body" style={{ fontWeight: '700' }}> {rec.currentTime} </AccessibleText>
+                                reminder.
+                            </AccessibleText>
+                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.suggestionText}>
+                                {rec.reason}
+                            </AccessibleText>
+                            <AccessibleText variant="body" style={styles.suggestionText}>
+                                We suggest moving this reminder to{' '}
+                                <AccessibleText variant="body" style={{ fontWeight: '700' }}>
+                                    {rec.recommendedTime}
+                                </AccessibleText>
+                                .
+                            </AccessibleText>
+                            <View style={styles.suggestionActions}>
+                                <TouchableOpacity
+                                    style={styles.applyButton}
+                                    disabled={loading || applyingId === key}
+                                    onPress={() => handleApplyRecommendation(rec)}
+                                >
+                                    <AccessibleText
+                                        variant="button"
+                                        color={colors.neutral.white}
+                                    >
+                                        {applyingId === key ? 'Applying...' : 'Apply Change'}
+                                    </AccessibleText>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )})}
+                </View>
+            )}
+
             {/* Empty State */}
             {!loading && dailyData.length === 0 && (
                 <View style={styles.emptyState}>
@@ -281,6 +345,35 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.m,
         gap: spacing.m,
         marginBottom: spacing.m,
+    },
+    suggestionsContainer: {
+        paddingHorizontal: spacing.m,
+        marginTop: spacing.m,
+        marginBottom: spacing.l,
+    },
+    suggestionsTitle: {
+        marginBottom: spacing.s,
+    },
+    suggestionCard: {
+        backgroundColor: colors.neutral.white,
+        borderRadius: layout.borderRadius.large,
+        padding: spacing.m,
+        marginTop: spacing.s,
+        ...layout.shadow.small,
+    },
+    suggestionText: {
+        marginBottom: spacing.xs,
+    },
+    suggestionActions: {
+        marginTop: spacing.s,
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+    },
+    applyButton: {
+        backgroundColor: colors.primary.purple,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        borderRadius: layout.borderRadius.medium,
     },
     summaryContainer: {
         backgroundColor: colors.neutral.white,

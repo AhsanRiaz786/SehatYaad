@@ -12,6 +12,7 @@ import { colors, spacing, layout } from '../utils/theme';
 import { useNavigation } from '@react-navigation/native';
 import { groupMedicationsByTimeBlock, getTimeBlockInfo, TimeBlock, getScheduledTimeForToday, isDosePending, isDoseMissed } from '../utils/timeBlockUtils';
 import { DoseStatus } from '../components/StatusBadge';
+import { getScheduleRecommendations, ScheduleRecommendation, applyScheduleRecommendation } from '../services/adaptiveReminderService';
 
 interface MedicationWithStatus extends Medication {
   status: DoseStatus;
@@ -26,6 +27,8 @@ export default function HomeScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState<MedicationWithStatus | null>(null);
+  const [homeRecommendations, setHomeRecommendations] = useState<ScheduleRecommendation[]>([]);
+  const [applyingRecId, setApplyingRecId] = useState<string | null>(null);
   const navigation = useNavigation<any>();
 
   const fetchData = async () => {
@@ -76,6 +79,10 @@ export default function HomeScreen() {
       });
 
       setMedicationsWithStatus(enriched);
+
+      // Load adaptive reminder suggestions to surface on Home
+      const recs = await getScheduleRecommendations();
+      setHomeRecommendations(recs);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -106,6 +113,19 @@ export default function HomeScreen() {
   const handleModalSuccess = () => {
     fetchData(); // Refresh medication list
     setRefreshKey(prev => prev + 1); // Trigger DailySummary refresh
+  };
+
+  const handleApplyHomeRecommendation = async (rec: ScheduleRecommendation) => {
+    try {
+      const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}`;
+      setApplyingRecId(key);
+      await applyScheduleRecommendation(rec);
+      await fetchData();
+    } catch (error) {
+      console.error('Error applying home schedule recommendation:', error);
+    } finally {
+      setApplyingRecId(null);
+    }
   };
 
   const toggleBlock = (block: TimeBlock) => {
@@ -161,6 +181,65 @@ export default function HomeScreen() {
       >
         {/* Daily Summary */}
         <DailySummary refreshKey={refreshKey} />
+
+        {/* Smart Reminder Suggestion Banner (shows first suggestion only) */}
+        {homeRecommendations.length > 0 && (
+          <View style={styles.smartBanner}>
+            <View style={styles.smartBannerHeader}>
+              <Ionicons name="bulb" size={22} color={colors.primary.orange} />
+              <AccessibleText variant="h3" style={styles.smartBannerTitle}>
+                Smart Reminder Suggestion
+              </AccessibleText>
+            </View>
+            {homeRecommendations.slice(0, 1).map((rec, index) => {
+              const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}-${index}`;
+              return (
+                <View key={key}>
+                  <AccessibleText variant="body" style={styles.smartBannerText}>
+                    For{' '}
+                    <AccessibleText variant="body" style={{ fontWeight: '700' }}>
+                      {rec.medication.name}
+                    </AccessibleText>
+                    , the{' '}
+                    <AccessibleText variant="body" style={{ fontWeight: '700' }}>
+                      {rec.currentTime}
+                    </AccessibleText>{' '}
+                    reminder often doesn’t work well.
+                  </AccessibleText>
+                  <AccessibleText variant="small" color={colors.neutral.gray700} style={styles.smartBannerText}>
+                    {rec.reason}
+                  </AccessibleText>
+                  <AccessibleText variant="body" style={styles.smartBannerText}>
+                    We can move it to{' '}
+                    <AccessibleText variant="body" style={{ fontWeight: '700' }}>
+                      {rec.recommendedTime}
+                    </AccessibleText>
+                    .
+                  </AccessibleText>
+                  <View style={styles.smartBannerActions}>
+                    <TouchableOpacity
+                      style={styles.smartApplyButton}
+                      disabled={loading || applyingRecId === key}
+                      onPress={() => handleApplyHomeRecommendation(rec)}
+                    >
+                      <AccessibleText variant="button" color={colors.neutral.white}>
+                        {applyingRecId === key ? 'Applying...' : 'Apply Change'}
+                      </AccessibleText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('Insights')}
+                      style={styles.smartDetailsButton}
+                    >
+                      <AccessibleText variant="button" color={colors.primary.purple}>
+                        View Details
+                      </AccessibleText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Time Blocks */}
         {timeBlocks.map(block => {
@@ -330,6 +409,42 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 100,
+  },
+  smartBanner: {
+    marginHorizontal: spacing.m,
+    marginBottom: spacing.m,
+    padding: spacing.m,
+    backgroundColor: colors.neutral.white,
+    borderRadius: layout.borderRadius.large,
+    ...layout.shadow.small,
+  },
+  smartBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.s,
+    gap: spacing.s,
+  },
+  smartBannerTitle: {
+    fontWeight: '600',
+  },
+  smartBannerText: {
+    marginBottom: spacing.xs,
+  },
+  smartBannerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.s,
+    marginTop: spacing.s,
+  },
+  smartApplyButton: {
+    backgroundColor: colors.primary.purple,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    borderRadius: layout.borderRadius.medium,
+  },
+  smartDetailsButton: {
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
   },
   timeBlockContainer: {
     marginHorizontal: spacing.m,
