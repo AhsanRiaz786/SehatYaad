@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +8,12 @@ import AccessibleInput from '../components/AccessibleInput';
 import AccessibleButton from '../components/AccessibleButton';
 import Card from '../components/Card';
 import TimePicker from '../components/TimePicker';
-import { addMedication } from '../database/helpers';
+import { addMedication, getMedications } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { requestPermissions, scheduleMedicationNotifications } from '../services/notificationService';
 import { useTTS } from '../context/TTSContext';
+import { voiceInputService } from '../services/voiceInputService';
+import { extractPrescriptionFromText } from '../services/prescriptionExtractor';
 
 const FREQUENCIES = ['Daily', 'Twice Daily', 'Thrice Daily', 'Custom'];
 const COLORS = [
@@ -40,10 +42,30 @@ export default function AddMedicationScreen() {
     const [selectedColor, setSelectedColor] = useState(COLORS[3].value); // Purple default
     const [selectedSound, setSelectedSound] = useState(NOTIFICATION_SOUNDS[0].value);
     const [loading, setLoading] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [voiceText, setVoiceText] = useState('');
+    const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+    const [extractedTimes, setExtractedTimes] = useState<string[] | null>(null);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const pulseAnimation = useRef<Animated.CompositeAnimation | null>(null);
     const { speak } = useTTS();
+
+    // Cleanup voice service on unmount
+    useEffect(() => {
+        return () => {
+            voiceInputService.destroy();
+            if (pulseAnimation.current) {
+                pulseAnimation.current.stop();
+            }
+        };
+    }, []);
 
     const getTimesForFrequency = (freq: string): string[] => {
         if (freq === 'Custom') return customTimes;
+        // If we have extracted times, use them; otherwise use defaults
+        if (extractedTimes && extractedTimes.length > 0) {
+            return extractedTimes;
+        }
         switch (freq) {
             case 'Daily': return ['09:00'];
             case 'Twice Daily': return ['09:00', '21:00'];
@@ -75,6 +97,334 @@ export default function AddMedicationScreen() {
         setCustomTimes(newTimes);
     };
 
+    // Voice input handlers
+    const handleStartVoiceInput = async () => {
+        try {
+            // Check if voice recognition is available
+            const isAvailable = await voiceInputService.checkAvailability();
+            if (!isAvailable) {
+                Alert.alert(
+                    'Voice Recognition Not Available',
+                    'Speech recognition is not available on this device.',
+                    [{ text: 'OK' }]
+                );
+                speak("Voice recognition is not available on this device");
+                return;
+            }
+
+            setIsListening(true);
+            setVoiceText('');
+            
+            // Start pulse animation
+            pulseAnimation.current = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.3,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            pulseAnimation.current.start();
+
+            await voiceInputService.startListening(
+                (result) => {
+                    console.log('🎤 Voice result received:', result);
+                    setVoiceText(result.text);
+                    if (result.isFinal) {
+                        console.log('✅ Final result received, auto-stopping...');
+                        // Stop listening and process text directly (don't rely on state)
+                        handleStopVoiceInput(result.text);
+                    }
+                },
+                (error) => {
+                    console.error('Voice input error:', error);
+                    const errorStr = error.toString().toLowerCase();
+                    const errorCode = errorStr.match(/code[":\s]*"?(\d+)/)?.[1] || '';
+                    
+                    // Error 7: No match - this is normal when no speech is detected yet
+                    // Error 11: Recognition service didn't understand - also transient
+                    // Don't stop listening or show alert for these transient errors
+                    if (errorCode === '7' || errorStr.includes('no match')) {
+                        console.log('🎤 No speech detected yet (error 7), continuing to listen...');
+                        // Don't do anything - just continue listening
+                        return;
+                    }
+                    
+                    if (errorCode === '11' || errorStr.includes("didn't understand")) {
+                        console.log('🎤 Recognition service error (error 11), continuing to listen...');
+                        // Don't stop listening - service might recover or user can keep speaking
+                        return;
+                    }
+                    
+                    // Check if it's a permission error
+                    if (errorStr.includes('permission') || errorStr.includes('denied')) {
+                        Alert.alert(
+                            'Microphone Permission Required',
+                            'Please enable microphone access in your device settings to use voice input.',
+                            [{ text: 'OK' }]
+                        );
+                        speak("Microphone permission is required");
+                        setIsListening(false);
+                        if (pulseAnimation.current) {
+                            pulseAnimation.current.stop();
+                        }
+                        pulseAnim.setValue(1);
+                    } else {
+                        // Only show alert for non-transient errors
+                        console.warn('🎤 Voice error occurred:', error);
+                        // Don't automatically stop for transient errors
+                        // The user can manually stop if needed
+                    }
+                }
+            );
+        } catch (error) {
+            console.error('Voice input error:', error);
+            const errorMsg = error instanceof Error ? error.message : 'Failed to start voice input';
+            Alert.alert('Error', errorMsg);
+            setIsListening(false);
+            if (pulseAnimation.current) {
+                pulseAnimation.current.stop();
+            }
+            pulseAnim.setValue(1);
+        }
+    };
+
+    const handleStopVoiceInput = async (textToProcess?: string) => {
+        try {
+            console.log('🛑 User requested to stop voice input');
+            
+            // Ensure textToProcess is a string (not an event object)
+            let textToUse: string | undefined = undefined;
+            if (typeof textToProcess === 'string') {
+                textToUse = textToProcess;
+            } else if (voiceText && typeof voiceText === 'string') {
+                textToUse = voiceText;
+            }
+            
+            console.log('🛑 Text to process:', textToUse);
+            
+            await voiceInputService.stopListening();
+            setIsListening(false);
+            if (pulseAnimation.current) {
+                pulseAnimation.current.stop();
+            }
+            pulseAnim.setValue(1);
+            
+            // Wait a moment for any final results to come through
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Check state again after waiting (final results might have updated it)
+            const finalText = textToUse || (voiceText && typeof voiceText === 'string' ? voiceText : '');
+            
+            if (finalText && typeof finalText === 'string' && finalText.trim()) {
+                console.log('📝 Processing voice text:', finalText);
+                processVoiceText(finalText);
+            } else {
+                console.log('⚠️ No voice text captured');
+                Alert.alert(
+                    'No Speech Detected',
+                    'Could not detect any speech. Please try speaking again.',
+                    [{ text: 'OK' }]
+                );
+                speak("No speech detected. Please try again.");
+            }
+        } catch (error) {
+            console.error('Stop voice error:', error);
+            setIsListening(false);
+            if (pulseAnimation.current) {
+                pulseAnimation.current.stop();
+            }
+            pulseAnim.setValue(1);
+        }
+    };
+
+    const processVoiceText = async (text: string) => {
+        if (!text.trim()) {
+            return;
+        }
+
+        setIsProcessingVoice(true);
+        try {
+            const result = await extractPrescriptionFromText(text);
+            
+            if (result.medications && result.medications.length > 0) {
+                // If multiple medications, save all automatically
+                if (result.medications.length > 1) {
+                    console.log(`💾 Auto-saving ${result.medications.length} medications...`);
+                    
+                    // Request permissions first
+                    const hasPermission = await requestPermissions();
+                    if (!hasPermission) {
+                        Alert.alert(
+                            'Permissions Required',
+                            'Notification permissions are needed for reminders. Saving medications without notifications.',
+                            [{ text: 'OK' }]
+                        );
+                    }
+                    
+                    let savedCount = 0;
+                    const medicationNames: string[] = [];
+                    
+                    // Save each medication
+                    for (const med of result.medications) {
+                        try {
+                            // Build dosage string
+                            let dosageStr = '';
+                            if (med.dosage && med.dosageUnit) {
+                                dosageStr = `${med.dosage} ${med.dosageUnit}`;
+                            } else if (med.dosage) {
+                                dosageStr = med.dosage;
+                            } else if (med.dosageUnit) {
+                                dosageStr = med.dosageUnit;
+                            }
+                            
+                            // Use extracted times or default based on frequency
+                            let times: string[] = [];
+                            if (med.times && med.times.length > 0) {
+                                times = med.times;
+                            } else if (med.frequency) {
+                                // Map frequency to default times
+                                if (med.frequency.toLowerCase().includes('daily') || med.frequency.toLowerCase().includes('once')) {
+                                    times = ['08:00'];
+                                } else if (med.frequency.toLowerCase().includes('twice')) {
+                                    times = ['08:00', '20:00'];
+                                } else if (med.frequency.toLowerCase().includes('thrice')) {
+                                    times = ['08:00', '14:00', '20:00'];
+                                }
+                            }
+                            
+                            if (times.length === 0) {
+                                times = ['08:00']; // Default fallback
+                            }
+                            
+                            const medId = await addMedication({
+                                name: med.name || 'Unknown',
+                                dosage: dosageStr || 'As prescribed',
+                                frequency: med.frequency || 'Daily',
+                                times: times,
+                                notes: med.instructions || '',
+                                color: selectedColor,
+                                notification_sound: selectedSound,
+                            });
+                            
+                            // Schedule notifications if permission granted
+                            if (hasPermission) {
+                                const savedMeds = await getMedications();
+                                const fullMed = savedMeds.find(m => m.id === medId);
+                                if (fullMed && fullMed.id) {
+                                    await scheduleMedicationNotifications(fullMed as any);
+                                }
+                            }
+                            
+                            savedCount++;
+                            medicationNames.push(med.name || 'Unknown');
+                            console.log(`✅ Saved medication: ${med.name}`);
+                        } catch (medError) {
+                            console.error(`❌ Error saving medication ${med.name}:`, medError);
+                        }
+                    }
+                    
+                    if (savedCount > 0) {
+                        const medList = medicationNames.slice(0, 3).join(', ');
+                        const moreText = medicationNames.length > 3 ? ` and ${medicationNames.length - 3} more` : '';
+                        const message = `Saved ${savedCount} medication${savedCount > 1 ? 's' : ''}: ${medList}${moreText}`;
+                        
+                        Alert.alert(
+                            'Success!',
+                            message,
+                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                        );
+                        speak(`Successfully saved ${savedCount} medication${savedCount > 1 ? 's' : ''}`);
+                    } else {
+                        throw new Error('Failed to save any medications');
+                    }
+                    
+                    return; // Exit early - medications are already saved
+                }
+                
+                // Single medication: fill the form for user to review
+                const med = result.medications[0];
+                
+                // Auto-fill form
+                setName(med.name || '');
+                
+                // Handle dosage with unit
+                if (med.dosage && med.dosageUnit) {
+                    setDosage(`${med.dosage} ${med.dosageUnit}`);
+                } else if (med.dosage) {
+                    setDosage(med.dosage);
+                } else if (med.dosageUnit) {
+                    setDosage(med.dosageUnit);
+                }
+                
+                // Set frequency and times based on extracted data
+                if (med.times && med.times.length > 0) {
+                    // Store extracted times
+                    setExtractedTimes(med.times);
+                    
+                    if (med.times.length === 1) {
+                        setFrequency('Daily');
+                    } else if (med.times.length === 2) {
+                        setFrequency('Twice Daily');
+                    } else if (med.times.length === 3) {
+                        setFrequency('Thrice Daily');
+                    } else {
+                        setFrequency('Custom');
+                        setCustomTimes(med.times);
+                    }
+                } else if (med.frequency) {
+                    // Use frequency from extraction
+                    if (FREQUENCIES.includes(med.frequency)) {
+                        setFrequency(med.frequency);
+                    }
+                }
+                
+                if (med.instructions) {
+                    setNotes(med.instructions);
+                }
+                
+                speak(`I found ${med.name}. Please review and confirm.`);
+            } else {
+                Alert.alert(
+                    'No Medication Found',
+                    'Could not extract medication information from your voice input. Please try again or enter manually.',
+                    [{ text: 'OK' }]
+                );
+                speak("Could not understand the medication information. Please try again.");
+            }
+        } catch (error) {
+            console.error('Voice processing error:', error);
+            const errorMsg = error instanceof Error ? error.message : 'Failed to process voice input';
+            
+            // Provide more helpful error messages
+            let alertMessage = errorMsg;
+            if (errorMsg.includes('500') || errorMsg.includes('Server error')) {
+                alertMessage = 'Backend server error. Please check your internet connection and try again, or enter medication details manually.';
+            } else if (errorMsg.includes('Network request failed') || errorMsg.includes('fetch')) {
+                alertMessage = 'Cannot connect to server. Please check your internet connection and try again.';
+            }
+            
+            Alert.alert(
+                'Processing Error',
+                alertMessage,
+                [
+                    { text: 'Try Again', onPress: () => handleStartVoiceInput(), style: 'default' },
+                    { text: 'Enter Manually', style: 'cancel' }
+                ]
+            );
+            speak("Failed to process voice input. Please try again or enter manually.");
+        } finally {
+            setIsProcessingVoice(false);
+            setVoiceText('');
+        }
+    };
+
     const handleSave = async () => {
         if (!name.trim() || !dosage.trim()) {
             Alert.alert('Missing Information', 'Please fill in Medication Name and Dosage.');
@@ -82,7 +432,8 @@ export default function AddMedicationScreen() {
             return;
         }
 
-        const times = getTimesForFrequency(frequency);
+        // Use extracted times if available, otherwise use frequency-based times
+        const times = extractedTimes || getTimesForFrequency(frequency);
         if (times.length === 0) {
             Alert.alert('Missing Times', 'Please add at least one reminder time.');
             speak("Please add at least one reminder time.");
@@ -176,6 +527,86 @@ export default function AddMedicationScreen() {
                     Fill in the details below
                 </AccessibleText>
             </LinearGradient>
+
+            {/* Voice Input Card */}
+            <Card style={styles.voiceCard}>
+                <View style={styles.voiceCardHeader}>
+                    <Ionicons name="mic" size={24} color={colors.primary.purple} />
+                    <AccessibleText variant="h3" style={styles.voiceCardTitle}>
+                        Voice Input
+                    </AccessibleText>
+                </View>
+                
+                <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.voiceHint}>
+                    Speak naturally: "I take 500mg Metformin every morning after breakfast"
+                </AccessibleText>
+
+                {voiceText && (
+                    <View style={styles.voiceTextContainer}>
+                        <AccessibleText variant="body" style={styles.voiceText}>
+                            "{voiceText}"
+                        </AccessibleText>
+                    </View>
+                )}
+
+                {isProcessingVoice && (
+                    <View style={styles.processingContainer}>
+                        <ActivityIndicator size="small" color={colors.primary.purple} />
+                        <AccessibleText variant="caption" color={colors.primary.purple} style={{ marginLeft: spacing.s }}>
+                            Processing...
+                        </AccessibleText>
+                    </View>
+                )}
+
+                <TouchableOpacity
+                    style={[
+                        styles.voiceButton,
+                        isListening && styles.voiceButtonActive
+                    ]}
+                    onPress={() => {
+                        if (isListening) {
+                            handleStopVoiceInput();
+                        } else {
+                            handleStartVoiceInput();
+                        }
+                    }}
+                    disabled={isProcessingVoice}
+                    accessibilityLabel={isListening ? "Stop recording" : "Start voice input"}
+                    accessibilityRole="button"
+                >
+                    <Animated.View
+                        style={[
+                            styles.voiceButtonInner,
+                            {
+                                transform: [{ scale: pulseAnim }],
+                            },
+                        ]}
+                    >
+                        <LinearGradient
+                            colors={
+                                isListening
+                                    ? [colors.semantic.error, '#DC2626'] as [string, string, ...string[]]
+                                    : colors.gradients.primary as [string, string, ...string[]]
+                            }
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.voiceButtonGradient}
+                        >
+                            <Ionicons
+                                name={isListening ? 'stop' : 'mic'}
+                                size={32}
+                                color={colors.neutral.white}
+                            />
+                        </LinearGradient>
+                    </Animated.View>
+                </TouchableOpacity>
+
+                {isListening && (
+                    <AccessibleText variant="caption" color={colors.primary.purple} style={styles.listeningText}>
+                        Listening... Tap to stop
+                    </AccessibleText>
+                )}
+            </Card>
 
             {/* Form Card */}
             <Card style={styles.formCard}>
@@ -421,5 +852,65 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         width: '80%',
         marginTop: 20,
+    },
+    voiceCard: {
+        marginHorizontal: spacing.m,
+        marginBottom: spacing.m,
+        padding: spacing.m,
+        alignItems: 'center',
+    },
+    voiceCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.s,
+        alignSelf: 'flex-start',
+    },
+    voiceCardTitle: {
+        marginLeft: spacing.s,
+    },
+    voiceHint: {
+        marginBottom: spacing.m,
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    voiceTextContainer: {
+        width: '100%',
+        backgroundColor: colors.neutral.gray100,
+        padding: spacing.m,
+        borderRadius: layout.borderRadius.medium,
+        marginBottom: spacing.m,
+    },
+    voiceText: {
+        fontStyle: 'italic',
+        color: colors.neutral.gray700,
+    },
+    processingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.m,
+    },
+    voiceButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        marginBottom: spacing.s,
+    },
+    voiceButtonInner: {
+        width: '100%',
+        height: '100%',
+    },
+    voiceButtonGradient: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...layout.shadow.large,
+    },
+    voiceButtonActive: {
+        ...layout.shadow.colored,
+    },
+    listeningText: {
+        fontWeight: '600',
     },
 });
