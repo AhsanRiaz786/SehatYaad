@@ -8,7 +8,7 @@ import AccessibleInput from '../components/AccessibleInput';
 import AccessibleButton from '../components/AccessibleButton';
 import Card from '../components/Card';
 import TimePicker from '../components/TimePicker';
-import { addMedication, getMedications } from '../database/helpers';
+import { addMedication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { requestPermissions, scheduleMedicationNotifications } from '../services/notificationService';
 import { useTTS } from '../context/TTSContext';
@@ -132,11 +132,36 @@ export default function AddMedicationScreen() {
             );
             pulseAnimation.current.start();
 
+            // Speak the prompt BEFORE starting listening, and wait for it to complete
+            console.log('🔊 Speaking prompt...');
+            await speak("I'm listening. Please tell me about your medication.");
+            
+            // Small delay after TTS completes to ensure audio is fully stopped
+            console.log('⏳ Waiting for audio to clear...');
+            await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
+            
+            console.log('🎤 Starting voice recognition after TTS...');
             await voiceInputService.startListening(
                 (result) => {
                     console.log('🎤 Voice result received:', result);
+                    
+                    // Filter out the TTS prompt if it's accidentally picked up (for both partial and final)
+                    const promptWords = ["please", "tell", "me", "about", "your", "medication", "listening"];
+                    const resultLower = result.text.toLowerCase().trim();
+                    const resultWords = resultLower.split(/\s+/);
+                    
+                    // Check if the result is primarily composed of prompt words
+                    const promptWordCount = resultWords.filter(word => promptWords.includes(word)).length;
+                    const isPromptEcho = promptWordCount >= Math.min(3, resultWords.length) && resultWords.length <= 8;
+                    
+                    if (isPromptEcho) {
+                        console.log('🎤 Ignoring TTS prompt echo:', result.text);
+                        return; // Don't update state or process
+                    }
+                    
+                    // Only update state and process if it's NOT a prompt echo
                     setVoiceText(result.text);
-                    if (result.isFinal) {
+                    if (result.isFinal && result.text.trim()) {
                         console.log('✅ Final result received, auto-stopping...');
                         // Stop listening and process text directly (don't rely on state)
                         handleStopVoiceInput(result.text);
@@ -200,10 +225,10 @@ export default function AddMedicationScreen() {
             console.log('🛑 User requested to stop voice input');
             
             // Ensure textToProcess is a string (not an event object)
-            let textToUse: string | undefined = undefined;
-            if (typeof textToProcess === 'string') {
+            let textToUse: string | undefined;
+            if (typeof textToProcess === 'string' && textToProcess.trim()) {
                 textToUse = textToProcess;
-            } else if (voiceText && typeof voiceText === 'string') {
+            } else if (voiceText && typeof voiceText === 'string' && voiceText.trim()) {
                 textToUse = voiceText;
             }
             
@@ -217,22 +242,27 @@ export default function AddMedicationScreen() {
             pulseAnim.setValue(1);
             
             // Wait a moment for any final results to come through
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise<void>(resolve => setTimeout(() => resolve(), 300));
             
             // Check state again after waiting (final results might have updated it)
-            const finalText = textToUse || (voiceText && typeof voiceText === 'string' ? voiceText : '');
+            const stateText = voiceText && typeof voiceText === 'string' ? voiceText.trim() : '';
+            const finalText = textToUse || stateText;
             
-            if (finalText && typeof finalText === 'string' && finalText.trim()) {
+            // Filter out TTS prompt if accidentally captured
+            const promptPhrase = "please tell me about your medication";
+            const isPromptEcho = finalText.toLowerCase().includes(promptPhrase) && 
+                                finalText.toLowerCase().replace(/[^a-z]/g, '').length < 50;
+            
+            if (finalText && !isPromptEcho) {
                 console.log('📝 Processing voice text:', finalText);
                 processVoiceText(finalText);
             } else {
-                console.log('⚠️ No voice text captured');
-                Alert.alert(
-                    'No Speech Detected',
-                    'Could not detect any speech. Please try speaking again.',
-                    [{ text: 'OK' }]
-                );
-                speak("No speech detected. Please try again.");
+                console.log('⚠️ No valid speech captured');
+                if (isPromptEcho) {
+                    console.log('⚠️ Detected prompt echo, ignoring');
+                }
+                setVoiceText(''); // Clear any echo text
+                speak("I didn't catch that. Please try again.");
             }
         } catch (error) {
             console.error('Stop voice error:', error);
@@ -254,102 +284,7 @@ export default function AddMedicationScreen() {
             const result = await extractPrescriptionFromText(text);
             
             if (result.medications && result.medications.length > 0) {
-                // If multiple medications, save all automatically
-                if (result.medications.length > 1) {
-                    console.log(`💾 Auto-saving ${result.medications.length} medications...`);
-                    
-                    // Request permissions first
-                    const hasPermission = await requestPermissions();
-                    if (!hasPermission) {
-                        Alert.alert(
-                            'Permissions Required',
-                            'Notification permissions are needed for reminders. Saving medications without notifications.',
-                            [{ text: 'OK' }]
-                        );
-                    }
-                    
-                    let savedCount = 0;
-                    const medicationNames: string[] = [];
-                    
-                    // Save each medication
-                    for (const med of result.medications) {
-                        try {
-                            // Build dosage string
-                            let dosageStr = '';
-                            if (med.dosage && med.dosageUnit) {
-                                dosageStr = `${med.dosage} ${med.dosageUnit}`;
-                            } else if (med.dosage) {
-                                dosageStr = med.dosage;
-                            } else if (med.dosageUnit) {
-                                dosageStr = med.dosageUnit;
-                            }
-                            
-                            // Use extracted times or default based on frequency
-                            let times: string[] = [];
-                            if (med.times && med.times.length > 0) {
-                                times = med.times;
-                            } else if (med.frequency) {
-                                // Map frequency to default times
-                                if (med.frequency.toLowerCase().includes('daily') || med.frequency.toLowerCase().includes('once')) {
-                                    times = ['08:00'];
-                                } else if (med.frequency.toLowerCase().includes('twice')) {
-                                    times = ['08:00', '20:00'];
-                                } else if (med.frequency.toLowerCase().includes('thrice')) {
-                                    times = ['08:00', '14:00', '20:00'];
-                                }
-                            }
-                            
-                            if (times.length === 0) {
-                                times = ['08:00']; // Default fallback
-                            }
-                            
-                            const medId = await addMedication({
-                                name: med.name || 'Unknown',
-                                dosage: dosageStr || 'As prescribed',
-                                frequency: med.frequency || 'Daily',
-                                times: times,
-                                notes: med.instructions || '',
-                                color: selectedColor,
-                                notification_sound: selectedSound,
-                            });
-                            
-                            // Schedule notifications if permission granted
-                            if (hasPermission) {
-                                const savedMeds = await getMedications();
-                                const fullMed = savedMeds.find(m => m.id === medId);
-                                if (fullMed && fullMed.id) {
-                                    await scheduleMedicationNotifications(fullMed as any);
-                                }
-                            }
-                            
-                            savedCount++;
-                            medicationNames.push(med.name || 'Unknown');
-                            console.log(`✅ Saved medication: ${med.name}`);
-                        } catch (medError) {
-                            console.error(`❌ Error saving medication ${med.name}:`, medError);
-                        }
-                    }
-                    
-                    if (savedCount > 0) {
-                        const medList = medicationNames.slice(0, 3).join(', ');
-                        const moreText = medicationNames.length > 3 ? ` and ${medicationNames.length - 3} more` : '';
-                        const message = `Saved ${savedCount} medication${savedCount > 1 ? 's' : ''}: ${medList}${moreText}`;
-                        
-                        Alert.alert(
-                            'Success!',
-                            message,
-                            [{ text: 'OK', onPress: () => navigation.goBack() }]
-                        );
-                        speak(`Successfully saved ${savedCount} medication${savedCount > 1 ? 's' : ''}`);
-                    } else {
-                        throw new Error('Failed to save any medications');
-                    }
-                    
-                    return; // Exit early - medications are already saved
-                }
-                
-                // Single medication: fill the form for user to review
-                const med = result.medications[0];
+                const med = result.medications[0]; // Take first medication
                 
                 // Auto-fill form
                 setName(med.name || '');
