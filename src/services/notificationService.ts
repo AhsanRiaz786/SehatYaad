@@ -21,7 +21,7 @@ export async function setupNotificationCategories() {
     await Notifications.setNotificationCategoryAsync('medication-reminder', [
         {
             identifier: 'take',
-            buttonTitle: 'I Took It ✓',
+            buttonTitle: 'I Took It',
             options: {
                 opensAppToForeground: false,
             },
@@ -92,7 +92,7 @@ export async function scheduleMedicationNotifications(
     medication: Medication & { id: number }
 ): Promise<string[]> {
     try {
-        console.log(`📅 Starting to schedule notifications for ${medication.name}`);
+        console.log(`Starting to schedule notifications for ${medication.name}`);
         console.log(`Times:`, medication.times);
 
         const notificationIds: string[] = [];
@@ -118,12 +118,12 @@ export async function scheduleMedicationNotifications(
         for (const time of medication.times) {
             const [hours, minutes] = time.split(':').map(Number);
 
-            console.log(`⏰ Scheduling notification for ${time} (${hours}:${minutes})`);
+            console.log(`Scheduling notification for ${time} (${hours}:${minutes})`);
 
             // For Android, we need to use DAILY trigger, not CALENDAR
             const notificationId = await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: `💊 Time for ${medication.name}`,
+                    title: `Time for ${medication.name}`,
                     body: `Take ${medication.dosage}${medication.notes ? ` - ${medication.notes}` : ''}`,
                     sound: medication.notification_sound || 'default',
                     priority: Notifications.AndroidNotificationPriority.MAX,
@@ -144,7 +144,7 @@ export async function scheduleMedicationNotifications(
             });
 
             notificationIds.push(notificationId);
-            console.log(`✅ Scheduled notification ${notificationId} for ${medication.name} at ${hours}:${minutes}`);
+            console.log(`Scheduled notification ${notificationId} for ${medication.name} at ${hours}:${minutes}`);
 
             // Optionally schedule a predictive pre-alert before this dose
             if (prealertsEnabled) {
@@ -157,7 +157,7 @@ export async function scheduleMedicationNotifications(
 
                     const preId = await Notifications.scheduleNotificationAsync({
                         content: {
-                            title: `⏰ Coming up: ${medication.name}`,
+                            title: `Coming up: ${medication.name}`,
                             body: `You often miss or snooze this dose. Get ready to take ${medication.dosage} soon.`,
                             sound: medication.notification_sound || 'default',
                             priority: Notifications.AndroidNotificationPriority.DEFAULT,
@@ -179,18 +179,18 @@ export async function scheduleMedicationNotifications(
                     });
 
                     notificationIds.push(preId);
-                    console.log(`🔔 Scheduled pre-alert ${preId} for ${medication.name} at ${preHour}:${preMinute}`);
+                    console.log(`Scheduled pre-alert ${preId} for ${medication.name} at ${preHour}:${preMinute}`);
                 }
             }
         }
 
         // Update medication with notification IDs
         await updateMedication(medication.id, { notification_ids: notificationIds });
-        console.log(`💾 Updated medication ${medication.id} with ${notificationIds.length} notification IDs`);
+        console.log(`Updated medication ${medication.id} with ${notificationIds.length} notification IDs`);
 
         return notificationIds;
     } catch (error) {
-        console.error('❌ Error scheduling notifications:', error);
+        console.error('Error scheduling notifications:', error);
         throw error;
     }
 }
@@ -208,7 +208,7 @@ export async function snoozeNotification(
     try {
         const notificationId = await Notifications.scheduleNotificationAsync({
             content: {
-                title: `💊 Reminder: ${medicationName}`,
+                title: `Reminder: ${medicationName}`,
                 body: `Take ${dosage} (Snoozed)`,
                 sound: 'default',
                 priority: Notifications.AndroidNotificationPriority.MAX,
@@ -257,7 +257,7 @@ export async function testNotification(): Promise<void> {
     try {
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: '💊 Test Notification',
+                title: 'Test Notification',
                 body: 'This is a test medication reminder',
                 sound: 'default',
                 data: { test: true },
@@ -302,7 +302,7 @@ export function setupNotificationListeners(
 
         // Handle action buttons
         if (actionIdentifier === 'take') {
-            console.log(`✅ User marked ${data.medicationName} as taken from notification`);
+            console.log(`User marked ${data.medicationName} as taken from notification`);
             try {
                 const scheduledTime = getScheduledTimeForToday(notificationTime);
                 await logDose({
@@ -312,7 +312,7 @@ export function setupNotificationListeners(
                     status: 'taken',
                     notes: 'Marked from notification'
                 });
-                console.log('✅ Dose logged as taken');
+                console.log('Dose logged as taken');
 
                 // Voice feedback
                 tts.speak(`${data.medicationName} marked as taken`, { rate: 1.0 });
@@ -326,7 +326,7 @@ export function setupNotificationListeners(
                 console.error('Error logging dose from notification:', error);
             }
         } else if (actionIdentifier === 'snooze') {
-            console.log(`⏰ User snoozed ${data.medicationName}`);
+            console.log(`User snoozed ${data.medicationName}`);
             try {
                 await snoozeNotification(
                     data.medicationId as number,
@@ -343,7 +343,7 @@ export function setupNotificationListeners(
                     status: 'snoozed',
                     notes: 'Snoozed from notification'
                 });
-                console.log('⏰ Dose logged as snoozed');
+                console.log('Dose logged as snoozed');
 
                 // Voice feedback
                 tts.speak('Reminder snoozed for 10 minutes', { rate: 1.0 });
@@ -354,7 +354,7 @@ export function setupNotificationListeners(
                 console.error('Error snoozing from notification:', error);
             }
         } else if (actionIdentifier === 'skip') {
-            console.log(`⏭️ User skipped ${data.medicationName}`);
+            console.log(`User skipped ${data.medicationName}`);
             try {
                 const scheduledTime = getScheduledTimeForToday(notificationTime);
                 await logDose({
@@ -364,7 +364,7 @@ export function setupNotificationListeners(
                     status: 'skipped',
                     notes: 'Skipped from notification'
                 });
-                console.log('⏭️ Dose logged as skipped');
+                console.log('Dose logged as skipped');
 
                 // Voice feedback
                 tts.speak('Dose skipped', { rate: 1.0 });
@@ -375,7 +375,7 @@ export function setupNotificationListeners(
                 console.error('Error logging skipped dose:', error);
             }
         } else if (data.type === 'caregiver_alert') {
-            console.log(`⚠️ Handling caregiver alert interaction for ${data.name}`);
+            console.log(`Handling caregiver alert interaction for ${data.name}`);
             if (data.phone) {
                 await callCaregiver(data.phone);
             }

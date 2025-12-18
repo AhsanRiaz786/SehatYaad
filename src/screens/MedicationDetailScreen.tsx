@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
         margin: spacing.m,
         borderRadius: layout.borderRadius.large,
         overflow: 'hidden',
-        ...layout.shadow.large,
+        ...layout.shadow.small,
     },
     heroGradient: {
         padding: spacing.xl,

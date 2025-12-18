@@ -66,7 +66,7 @@ export const checkAndNotifyCaregiver = async (consecutiveMisses: number, info: C
         // Prepare local notification for the user to alert the caregiver
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: '⚠️ Caregiver Alert Triggered',
+                title: 'Caregiver Alert Triggered',
                 body: `You've missed ${consecutiveMisses} doses. Should we notify ${info.name}?`,
                 data: { type: 'caregiver_alert', phone: info.phone, name: info.name },
             },

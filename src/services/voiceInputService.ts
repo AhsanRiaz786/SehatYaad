@@ -24,17 +24,17 @@ export class VoiceInputService {
 
     private setupVoiceHandlers() {
         Voice.onSpeechStart = () => {
-            console.log('🎤 Speech started');
+            console.log('Speech started');
             this.isListening = true;
         };
 
         Voice.onSpeechEnd = () => {
-            console.log('🎤 Speech ended');
+            console.log('Speech ended');
             this.isListening = false;
         };
 
         Voice.onSpeechError = (e) => {
-            console.error('🎤 Speech error:', e);
+            console.error('Speech error:', e);
             this.isListening = false;
         };
     }
@@ -46,7 +46,7 @@ export class VoiceInputService {
     public async checkAvailability(): Promise<boolean> {
         try {
             const isAvailable = await Voice.isAvailable();
-            console.log('🎤 Voice service available:', isAvailable);
+            console.log('Voice service available:', isAvailable);
             return Boolean(isAvailable);
         } catch (error) {
             console.error('Availability check error:', error);
@@ -78,7 +78,7 @@ export class VoiceInputService {
             Voice.onSpeechResults = (e) => {
                 if (e.value && e.value.length > 0) {
                     const text = e.value[0];
-                    console.log('🎤 Final speech result:', text);
+                    console.log('Final speech result:', text);
                     onResult({
                         text: text,
                         isFinal: true,
@@ -90,7 +90,7 @@ export class VoiceInputService {
             Voice.onSpeechPartialResults = (e) => {
                 if (e.value && e.value.length > 0) {
                     const text = e.value[0];
-                    console.log('🎤 Partial speech result:', text);
+                    console.log('Partial speech result:', text);
                     onResult({
                         text: text,
                         isFinal: false,
@@ -113,16 +113,16 @@ export class VoiceInputService {
                 
                 const errorStr = errorMsg.toLowerCase();
                 
-                console.error('🎤 Voice error:', errorMsg, e);
+                console.error('Voice error:', errorMsg, e);
                 
                 // Error codes 7 and 11 are transient - don't stop listening or call onError
                 if (errorCode === '7' || errorStr.includes('no match')) {
-                    console.log('🎤 Transient error (no match), continuing...');
+                    console.log('Transient error (no match), continuing...');
                     return; // Don't stop listening or notify
                 }
                 
                 if (errorCode === '11' || errorStr.includes("didn't understand")) {
-                    console.log('🎤 Transient error (didn\'t understand), continuing...');
+                    console.log('Transient error (didn\'t understand), continuing...');
                     return; // Don't stop listening or notify
                 }
                 
@@ -133,19 +133,19 @@ export class VoiceInputService {
             
             // Also set up onSpeechStart and onSpeechEnd handlers
             Voice.onSpeechStart = () => {
-                console.log('🎤 Speech recognition started');
+                console.log('Speech recognition started');
                 this.isListening = true;
             };
             
             Voice.onSpeechEnd = () => {
-                console.log('🎤 Speech recognition ended');
+                console.log('Speech recognition ended');
                 this.isListening = false;
             };
             
             // Start listening (permissions are requested automatically)
-            console.log(`🎤 Starting voice recognition with language: ${language}`);
+            console.log(`Starting voice recognition with language: ${language}`);
             await Voice.start(language);
-            console.log('🎤 Voice.start() called successfully');
+            console.log('Voice.start() called successfully');
         } catch (error) {
             console.error('Start listening error:', error);
             const errorMsg = error instanceof Error ? error.message : 'Failed to start listening';
@@ -160,20 +160,20 @@ export class VoiceInputService {
      */
     public async stopListening(): Promise<void> {
         try {
-            console.log('🎤 Stopping voice recognition...');
+            console.log('Stopping voice recognition...');
             const isRecognizing = await Voice.isRecognizing();
             if (isRecognizing || this.isListening) {
                 await Voice.stop();
-                console.log('🎤 Voice.stop() called');
+                console.log('Voice.stop() called');
                 // Give it a moment before canceling
                 await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
                 await Voice.cancel();
-                console.log('🎤 Voice.cancel() called');
+                console.log('Voice.cancel() called');
             }
             this.isListening = false;
-            console.log('🎤 Voice recognition stopped');
+            console.log('Voice recognition stopped');
         } catch (error) {
-            console.error('🎤 Stop listening error:', error);
+            console.error('Stop listening error:', error);
             this.isListening = false;
         }
     }

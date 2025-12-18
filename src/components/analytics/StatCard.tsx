@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     container: {
         borderRadius: layout.borderRadius.large,
         overflow: 'hidden',
-        ...layout.shadow.medium,
+        ...layout.shadow.small,
     },
     gradient: {
         flexDirection: 'row',

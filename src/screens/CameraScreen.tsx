@@ -53,7 +53,7 @@ export default function CameraScreen() {
             });
 
             if (photo) {
-                console.log('📸 Photo captured:', photo.uri);
+                console.log('Photo captured:', photo.uri);
                 // Navigate to review screen
                 navigation.navigate('PrescriptionReview', { imageUri: photo.uri });
             }
@@ -84,7 +84,7 @@ export default function CameraScreen() {
             });
 
             if (!result.canceled && result.assets[0]) {
-                console.log('🖼️ Image selected from gallery:', result.assets[0].uri);
+                console.log('Image selected from gallery:', result.assets[0].uri);
                 navigation.navigate('PrescriptionReview', { imageUri: result.assets[0].uri });
             }
         } catch (error) {

@@ -22,18 +22,19 @@ class SoundManager {
     }
 
     /**
-   * Play a sound effect
-   * Currently just logs - add actual sound files with expo-av for production
-   */
-    public async play(type: SoundType) {
+     * Play a sound effect
+     * Placeholder implementation - sound files can be added with expo-av if needed
+     * Currently silent to avoid unnecessary audio feedback
+     */
+    public async play(_type: SoundType) {
         try {
-            console.log(`🔊 [Sound] ${type}`);
-            // TODO: Load and play actual sound files
+            // Sound implementation placeholder
+            // To enable sounds: install expo-av and uncomment below
             // const sound = new Audio.Sound();
-            // await sound.loadAsync(require(`../assets/sounds/${type}.mp3`));
+            // await sound.loadAsync(require(`../assets/sounds/${_type}.mp3`));
             // await sound.playAsync();
-        } catch (error) {
-            console.error(`Error playing ${type} sound:`, error);
+        } catch (_error) {
+            // Silently handle sound errors - not critical for app functionality
         }
     }
 

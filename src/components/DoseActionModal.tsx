@@ -50,7 +50,7 @@ export default function DoseActionModal({
                 notes: notes || undefined
             });
 
-            console.log(`✅ Logged dose as ${action} for ${medication.name}`);
+            console.log(`Logged dose as ${action} for ${medication.name}`);
 
             // Voice feedback and sound
             if (action === 'taken') {

@@ -29,7 +29,7 @@ export default function DailySummaryCard({ refreshKey }: DailySummaryCardProps) 
         try {
             setLoading(true);
             const data = await getDailySummary();
-            console.log('📊 Daily Summary:', data);
+            console.log('Daily Summary:', data);
             setSummary(data);
         } catch (error) {
             console.error('Error loading daily summary:', error);
@@ -44,15 +44,15 @@ export default function DailySummaryCard({ refreshKey }: DailySummaryCardProps) 
 
     const getMotivationalMessage = () => {
         if (language === 'ur') {
-            if (adherencePercentage === 100) return 'بہترین! آپ بہت اچھا کر رہے ہیں! 🎉';
-            if (adherencePercentage >= 80) return 'بہت اچھا کام! جاری رکھیں! 💪';
-            if (adherencePercentage >= 60) return 'آپ اچھا کر رہے ہیں! 👍';
-            return 'آج بھی ٹریک پر رہیں! 💊';
+            if (adherencePercentage === 100) return 'بہترین! آپ بہت اچھا کر رہے ہیں!';
+            if (adherencePercentage >= 80) return 'بہت اچھا کام! جاری رکھیں!';
+            if (adherencePercentage >= 60) return 'آپ اچھا کر رہے ہیں!';
+            return 'آج بھی ٹریک پر رہیں!';
         }
-        if (adherencePercentage === 100) return "Perfect! You're crushing it! 🎉";
-        if (adherencePercentage >= 80) return "Great job! Keep it up! 💪";
-        if (adherencePercentage >= 60) return "You're doing well! 👍";
-        return "Let's stay on track today! 💊";
+        if (adherencePercentage === 100) return "Perfect! You're doing great!";
+        if (adherencePercentage >= 80) return "Great job! Keep it up!";
+        if (adherencePercentage >= 60) return "You're doing well!";
+        return "Let's stay on track today!";
     };
 
     return (
