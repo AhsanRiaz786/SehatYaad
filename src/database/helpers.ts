@@ -189,7 +189,7 @@ export const getDailySummary = async (date: Date = new Date()) => {
 
     // Get all medications
     const medications = await getMedications();
-    console.log(`📊 Checking ${medications.length} medications for today`);
+    console.log(`Checking ${medications.length} medications for today`);
 
     // Get all logged doses for today
     const loggedDoses = await db.getAllAsync<Dose>(
@@ -197,7 +197,7 @@ export const getDailySummary = async (date: Date = new Date()) => {
         Math.floor(startOfDay.getTime() / 1000),
         Math.floor(endOfDay.getTime() / 1000)
     );
-    console.log(`📊 Found ${loggedDoses.length} logged doses in database`);
+    console.log(`Found ${loggedDoses.length} logged doses in database`);
 
     let total = 0;
     let taken = 0;
@@ -210,7 +210,7 @@ export const getDailySummary = async (date: Date = new Date()) => {
     for (const med of medications) {
         if (!med.times || med.times.length === 0) continue;
 
-        console.log(`📊 Processing medication: ${med.name} with ${med.times.length} times`);
+        console.log(`Processing medication: ${med.name} with ${med.times.length} times`);
 
         for (const time of med.times) {
             const [hours, minutes] = time.split(':').map(Number);
@@ -231,7 +231,7 @@ export const getDailySummary = async (date: Date = new Date()) => {
                 );
 
                 if (loggedDose) {
-                    console.log(`  ✓ ${time} - Logged as ${loggedDose.status}`);
+                    console.log(`  ${time} - Logged as ${loggedDose.status}`);
                     if (loggedDose.status === 'taken') {
                         taken++;
                     } else if (loggedDose.status === 'missed') {
@@ -245,17 +245,17 @@ export const getDailySummary = async (date: Date = new Date()) => {
 
                     if (timeDiff > -1800) { // Within past 30 minutes or in future
                         pending++;
-                        console.log(`  ⏰ ${time} - Pending (in ${hoursUntil.toFixed(1)}h)`);
+                        console.log(`  ${time} - Pending (in ${hoursUntil.toFixed(1)}h)`);
                     } else {
                         missed++;
-                        console.log(`  ❌ ${time} - Missed (${hoursUntil.toFixed(1)}h ago)`);
+                        console.log(`  ${time} - Missed (${hoursUntil.toFixed(1)}h ago)`);
                     }
                 }
             }
         }
     }
 
-    console.log(`📊 Final Summary: Total=${total}, Taken=${taken}, Pending=${pending}, Missed=${missed}`);
+    console.log(`Final Summary: Total=${total}, Taken=${taken}, Pending=${pending}, Missed=${missed}`);
     return { total, taken, missed, pending };
 };
 

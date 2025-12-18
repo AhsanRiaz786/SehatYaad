@@ -210,7 +210,7 @@ export default function DoseHistoryScreen() {
                                     </AccessibleText>
                                     {day.total > 0 ? (
                                         <AccessibleText variant="caption" color={colors.neutral.gray600}>
-                                            ✅ {day.taken}/{day.total} doses ({adherencePercentage}%)
+                                            {day.taken}/{day.total} doses ({adherencePercentage}%)
                                         </AccessibleText>
                                     ) : (
                                         <AccessibleText variant="caption" color={colors.neutral.gray500}>
@@ -249,7 +249,7 @@ export default function DoseHistoryScreen() {
                                                     </AccessibleText>
                                                     {item.dose.notes && (
                                                         <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.doseNotes}>
-                                                            📝 {item.dose.notes}
+                                                            {item.dose.notes}
                                                         </AccessibleText>
                                                     )}
                                                 </View>

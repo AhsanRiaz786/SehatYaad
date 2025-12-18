@@ -27,8 +27,8 @@ export async function extractPrescriptionData(
     imageUri: string
 ): Promise<PrescriptionData> {
     try {
-        console.log('📸 Starting prescription extraction via backend...');
-        console.log('🔗 Backend URL:', BACKEND_URL);
+        console.log('Starting prescription extraction via backend...');
+        console.log('Backend URL:', BACKEND_URL);
 
         // Create form data with the image
         const formData = new FormData();
@@ -47,7 +47,7 @@ export async function extractPrescriptionData(
             name: 'prescription.jpg',
         });
 
-        console.log('🔄 Uploading image to backend...');
+        console.log('Uploading image to backend...');
 
         // Call backend API
         const response = await fetch(`${BACKEND_URL}/api/process-medication-image`, {
@@ -59,7 +59,7 @@ export async function extractPrescriptionData(
             },
         });
 
-        console.log('📡 Response status:', response.status);
+        console.log('Response status:', response.status);
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -72,18 +72,18 @@ export async function extractPrescriptionData(
             throw new Error(result.error || 'Processing failed');
         }
 
-        console.log('✅ Backend extracted medications:', result.data.medications.length);
-        console.log('📊 Extraction data:', JSON.stringify(result.data, null, 2));
+        console.log('Backend extracted medications:', result.data.medications.length);
+        console.log('Extraction data:', JSON.stringify(result.data, null, 2));
 
         // Validate that we have at least some data
         if (!result.data.medications || result.data.medications.length === 0) {
-            console.warn('⚠️ No medications extracted from prescription');
+            console.warn('No medications extracted from prescription');
         }
 
         return result.data;
 
     } catch (error) {
-        console.error('❌ Prescription extraction error:', error);
+        console.error('Prescription extraction error:', error);
 
         // Provide more specific error messages
         if (error instanceof TypeError && error.message.includes('Network request failed')) {
@@ -107,9 +107,9 @@ export async function extractPrescriptionFromText(
     text: string
 ): Promise<PrescriptionData> {
     try {
-        console.log('📝 Starting text extraction via backend...');
-        console.log('🔗 Backend URL:', BACKEND_URL);
-        console.log('📄 Input text:', text);
+        console.log('Starting text extraction via backend...');
+        console.log('Backend URL:', BACKEND_URL);
+        console.log('Input text:', text);
 
         const response = await fetch(`${BACKEND_URL}/api/process-medication-text`, {
             method: 'POST',
@@ -120,18 +120,18 @@ export async function extractPrescriptionFromText(
             body: JSON.stringify({ text: text.trim() }),
         });
 
-        console.log('📡 Response status:', response.status);
+        console.log('Response status:', response.status);
 
         if (!response.ok) {
             let errorMessage = 'Failed to process text';
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.error || errorData.message || `Server error (${response.status})`;
-                console.error('❌ Backend error response:', errorData);
+                console.error('Backend error response:', errorData);
             } catch (parseError) {
                 const responseText = await response.text().catch(() => 'Unknown error');
                 errorMessage = `Server error (${response.status}): ${responseText}`;
-                console.error('❌ Backend error (non-JSON):', responseText);
+                console.error('Backend error (non-JSON):', responseText);
             }
             throw new Error(errorMessage);
         }
@@ -142,17 +142,17 @@ export async function extractPrescriptionFromText(
             throw new Error(result.error || 'Processing failed');
         }
 
-        console.log('✅ Backend extracted medications:', result.data.medications?.length || 0);
-        console.log('📊 Extraction data:', JSON.stringify(result.data, null, 2));
+        console.log('Backend extracted medications:', result.data.medications?.length || 0);
+        console.log('Extraction data:', JSON.stringify(result.data, null, 2));
 
         if (!result.data.medications || result.data.medications.length === 0) {
-            console.warn('⚠️ No medications extracted from text');
+            console.warn('No medications extracted from text');
         }
 
         return result.data;
 
     } catch (error) {
-        console.error('❌ Text extraction error:', error);
+        console.error('Text extraction error:', error);
 
         if (error instanceof TypeError && error.message.includes('Network request failed')) {
             throw new Error(

@@ -66,7 +66,7 @@ export default function AddMedicationScreen() {
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', async () => {
             // Reset voice states when screen comes into focus
-            console.log('🔄 Screen focused - cleaning up voice service');
+            console.log('Screen focused - cleaning up voice service');
             setIsListening(false);
             setIsProcessingVoice(false);
             setVoiceText('');
@@ -169,18 +169,18 @@ export default function AddMedicationScreen() {
             pulseAnimation.current.start();
 
             // Speak the prompt BEFORE starting listening, and wait for it to complete
-            console.log('🔊 Speaking prompt...');
+            console.log('Speaking prompt...');
             await speak("I'm listening. Please tell me about your medication.");
             
             // Delay after TTS completes to ensure audio is fully stopped and won't be picked up
             // Increased delay to prevent TTS from being captured by microphone
-            console.log('⏳ Waiting for audio to clear...');
+            console.log('Waiting for audio to clear...');
             await new Promise<void>(resolve => setTimeout(() => resolve(), 1500));
             
-            console.log('🎤 Starting voice recognition after TTS...');
+            console.log('Starting voice recognition after TTS...');
             await voiceInputService.startListening(
                 (result) => {
-                    console.log('🎤 Voice result received:', result);
+                    console.log('Voice result received:', result);
                     
                     // Skip empty results (common with partial results)
                     if (!result.text || !result.text.trim()) {
@@ -210,7 +210,7 @@ export default function AddMedicationScreen() {
                     });
                     
                     if (isPromptEcho) {
-                        console.log('🎤 Ignoring TTS prompt echo:', result.text);
+                        console.log('Ignoring TTS prompt echo:', result.text);
                         return; // Don't update state
                     }
                     
@@ -218,7 +218,7 @@ export default function AddMedicationScreen() {
                     setVoiceText(result.text);
                     
                     if (result.isFinal && result.text.trim()) {
-                        console.log('✅ Final result received, auto-stopping...');
+                        console.log('Final result received, auto-stopping...');
                         // Stop listening and process text directly
                         handleStopVoiceInput(result.text);
                     }
@@ -232,13 +232,13 @@ export default function AddMedicationScreen() {
                     // Error 11: Recognition service didn't understand - also transient
                     // Don't stop listening or show alert for these transient errors
                     if (errorCode === '7' || errorStr.includes('no match')) {
-                        console.log('🎤 No speech detected yet (error 7), continuing to listen...');
+                        console.log('No speech detected yet (error 7), continuing to listen...');
                         // Don't do anything - just continue listening
                         return;
                     }
                     
                     if (errorCode === '11' || errorStr.includes("didn't understand")) {
-                        console.log('🎤 Recognition service error (error 11), continuing to listen...');
+                        console.log('Recognition service error (error 11), continuing to listen...');
                         // Don't stop listening - service might recover or user can keep speaking
                         return;
                     }
@@ -258,7 +258,7 @@ export default function AddMedicationScreen() {
                         pulseAnim.setValue(1);
                     } else {
                         // Only show alert for non-transient errors
-                        console.warn('🎤 Voice error occurred:', error);
+                        console.warn('Voice error occurred:', error);
                         // Don't automatically stop for transient errors
                         // The user can manually stop if needed
                     }
@@ -278,7 +278,7 @@ export default function AddMedicationScreen() {
 
     const handleStopVoiceInput = async (textToProcess?: string) => {
         try {
-            console.log('🛑 User requested to stop voice input');
+            console.log('User requested to stop voice input');
             
             // Stop listening and animations first
             await voiceInputService.stopListening();
@@ -300,13 +300,13 @@ export default function AddMedicationScreen() {
                                 finalText.toLowerCase().replace(/[^a-z]/g, '').length < 50;
             
             if (finalText && !isPromptEcho) {
-                console.log('📝 Processing voice text:', finalText);
+                console.log('Processing voice text:', finalText);
                 // Don't clear voiceText yet - let it show during processing
                 processVoiceText(finalText);
             } else {
-                console.log('⚠️ No valid speech captured');
+                console.log('No valid speech captured');
                 if (isPromptEcho) {
-                    console.log('⚠️ Detected prompt echo, ignoring');
+                    console.log('Detected prompt echo, ignoring');
                 }
                 setVoiceText(''); // Only clear if no valid speech
                 speak("I didn't catch that. Please try again.");
@@ -340,7 +340,7 @@ export default function AddMedicationScreen() {
             const result = await extractPrescriptionFromText(text);
             
             if (result.medications && result.medications.length > 0) {
-                console.log('🎤 Navigating to review screen with', result.medications.length, 'medications');
+                console.log('Navigating to review screen with', result.medications.length, 'medications');
                 speak(`Found ${result.medications.length} medication${result.medications.length > 1 ? 's' : ''}. Please review and confirm.`);
                 
                 // Reset all voice states and cleanup service before navigating
