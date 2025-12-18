@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { Medication, updateMedication, logDose } from '../database/helpers';
 import { getDatabase } from '../database/init';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
+import { callCaregiver } from './caregiverService';
 import { tts } from '../utils/tts';
 import { playSuccessSound } from '../utils/sounds';
 
@@ -372,6 +373,11 @@ export function setupNotificationListeners(
                 await Notifications.dismissNotificationAsync(notificationId);
             } catch (error) {
                 console.error('Error logging skipped dose:', error);
+            }
+        } else if (data.type === 'caregiver_alert') {
+            console.log(`⚠️ Handling caregiver alert interaction for ${data.name}`);
+            if (data.phone) {
+                await callCaregiver(data.phone);
             }
         }
 
