@@ -12,18 +12,16 @@ import { scheduleMedicationNotifications } from '../services/notificationService
 export default function PrescriptionReviewScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { imageUri } = route.params;
+    const { imageUri, medications: initialMedications } = route.params || {};
 
-    const [isExtracting, setIsExtracting] = useState(true);
-    const [medications, setMedications] = useState<ExtractedMedication[]>([]);
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [isExtracting, setIsExtracting] = useState(!!imageUri && !initialMedications);
+    const [medications, setMedications] = useState<ExtractedMedication[]>(initialMedications || []);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        extractData();
-    }, []);
-
     const extractData = async () => {
+        if (!imageUri) {
+            return;
+        }
         try {
             setIsExtracting(true);
             const data = await extractPrescriptionData(imageUri);
@@ -53,6 +51,25 @@ export default function PrescriptionReviewScreen() {
             setIsExtracting(false);
         }
     };
+
+    useEffect(() => {
+        // If medications are provided directly (voice input), use them
+        // Otherwise extract from image
+        if (initialMedications && initialMedications.length > 0) {
+            setMedications(initialMedications);
+            setIsExtracting(false);
+        } else if (imageUri) {
+            extractData();
+        } else if (!imageUri && !initialMedications) {
+            // No params provided - go back
+            Alert.alert(
+                'Invalid Parameters',
+                'No prescription data provided.',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const updateMedication = (index: number, field: keyof ExtractedMedication, value: any) => {
         const updated = [...medications];
@@ -128,12 +145,12 @@ export default function PrescriptionReviewScreen() {
                     colors={colors.gradients.primary as [string, string, ...string[]]}
                     style={styles.loadingGradient}
                 >
-                    <Ionicons name="scan" size={64} color={colors.neutral.white} />
+                    <Ionicons name={imageUri ? 'scan' : 'mic'} size={64} color={colors.neutral.white} />
                     <AccessibleText variant="h2" color={colors.neutral.white} style={{ marginTop: spacing.l }}>
-                        Analyzing Prescription...
+                        {imageUri ? 'Analyzing Prescription...' : 'Processing Voice Input...'}
                     </AccessibleText>
                     <AccessibleText variant="body" color={colors.neutral.white} style={{ marginTop: spacing.s, opacity: 0.9 }}>
-                        Using AI to extract medication details
+                        {imageUri ? 'Using AI to extract medication details' : 'Extracting medication information'}
                     </AccessibleText>
                     <ActivityIndicator size="large" color={colors.neutral.white} style={{ marginTop: spacing.xl }} />
                 </LinearGradient>
@@ -153,10 +170,12 @@ export default function PrescriptionReviewScreen() {
             </LinearGradient>
 
             <ScrollView style={styles.content}>
-                {/* Prescription Image */}
-                <View style={styles.imageContainer}>
-                    <Image source={{ uri: imageUri }} style={styles.prescriptionImage} resizeMode="contain" />
-                </View>
+                {/* Prescription Image - Only show if imageUri exists */}
+                {imageUri && (
+                    <View style={styles.imageContainer}>
+                        <Image source={{ uri: imageUri }} style={styles.prescriptionImage} resizeMode="contain" />
+                    </View>
+                )}
 
                 {/* Extracted Medications */}
                 <View style={styles.medicationsSection}>
@@ -234,7 +253,7 @@ export default function PrescriptionReviewScreen() {
             <View style={styles.actions}>
                 <TouchableOpacity style={styles.retakeButton} onPress={() => navigation.goBack()}>
                     <AccessibleText variant="button" color={colors.primary.purple}>
-                        Retake Photo
+                        {imageUri ? 'Retake Photo' : 'Try Again'}
                     </AccessibleText>
                 </TouchableOpacity>
 

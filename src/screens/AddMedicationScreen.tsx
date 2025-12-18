@@ -45,7 +45,7 @@ export default function AddMedicationScreen() {
     const [isListening, setIsListening] = useState(false);
     const [voiceText, setVoiceText] = useState('');
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-    const [extractedTimes, setExtractedTimes] = useState<string[] | null>(null);
+    const [extractedTimes] = useState<string[] | null>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const pulseAnimation = useRef<Animated.CompositeAnimation | null>(null);
     const { speak } = useTTS();
@@ -57,8 +57,35 @@ export default function AddMedicationScreen() {
             if (pulseAnimation.current) {
                 pulseAnimation.current.stop();
             }
+            pulseAnim.setValue(1);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Reset voice states when screen comes back into focus
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', async () => {
+            // Reset voice states when screen comes into focus
+            console.log('🔄 Screen focused - cleaning up voice service');
+            setIsListening(false);
+            setIsProcessingVoice(false);
+            setVoiceText('');
+            if (pulseAnimation.current) {
+                pulseAnimation.current.stop();
+            }
+            pulseAnim.setValue(1);
+            
+            // Ensure voice service is properly stopped and reset
+            try {
+                await voiceInputService.stopListening();
+            } catch (error) {
+                console.log('Error stopping voice service on focus:', error);
+            }
+        });
+
+        return unsubscribe;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [navigation]);
 
     const getTimesForFrequency = (freq: string): string[] => {
         if (freq === 'Custom') return customTimes;
@@ -100,6 +127,15 @@ export default function AddMedicationScreen() {
     // Voice input handlers
     const handleStartVoiceInput = async () => {
         try {
+            // Ensure any previous session is fully stopped first
+            try {
+                await voiceInputService.stopListening();
+                // Small delay to ensure cleanup completes
+                await new Promise<void>(resolve => setTimeout(() => resolve(), 200));
+            } catch (error) {
+                console.log('Cleanup before start:', error);
+            }
+
             // Check if voice recognition is available
             const isAvailable = await voiceInputService.checkAvailability();
             if (!isAvailable) {
@@ -136,34 +172,54 @@ export default function AddMedicationScreen() {
             console.log('🔊 Speaking prompt...');
             await speak("I'm listening. Please tell me about your medication.");
             
-            // Small delay after TTS completes to ensure audio is fully stopped
+            // Delay after TTS completes to ensure audio is fully stopped and won't be picked up
+            // Increased delay to prevent TTS from being captured by microphone
             console.log('⏳ Waiting for audio to clear...');
-            await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
+            await new Promise<void>(resolve => setTimeout(() => resolve(), 1500));
             
             console.log('🎤 Starting voice recognition after TTS...');
             await voiceInputService.startListening(
                 (result) => {
                     console.log('🎤 Voice result received:', result);
                     
-                    // Filter out the TTS prompt if it's accidentally picked up (for both partial and final)
-                    const promptWords = ["please", "tell", "me", "about", "your", "medication", "listening"];
-                    const resultLower = result.text.toLowerCase().trim();
-                    const resultWords = resultLower.split(/\s+/);
+                    // Skip empty results (common with partial results)
+                    if (!result.text || !result.text.trim()) {
+                        return;
+                    }
                     
-                    // Check if the result is primarily composed of prompt words
-                    const promptWordCount = resultWords.filter(word => promptWords.includes(word)).length;
-                    const isPromptEcho = promptWordCount >= Math.min(3, resultWords.length) && resultWords.length <= 8;
+                    // Filter out the TTS prompt if it's accidentally picked up
+                    // The TTS prompt is: "I'm listening. Please tell me about your medication."
+                    const resultLower = result.text.toLowerCase().trim();
+                    const normalizedResult = resultLower.replace(/[.,!?]/g, '').replace(/\s+/g, ' ');
+                    
+                    // Only check for exact prompt phrases - be more precise
+                    const promptPhrases = [
+                        "im listening please tell me about your medication",
+                        "i'm listening please tell me about your medication",
+                        "please tell me about your medication",
+                        "tell me about your medication"
+                    ];
+                    
+                    // Check if result matches EXACT prompt phrase (more strict)
+                    const isPromptEcho = promptPhrases.some(phrase => {
+                        // Exact match only
+                        if (normalizedResult === phrase) return true;
+                        // Starts with phrase and is very short (likely just the prompt)
+                        if (normalizedResult.startsWith(phrase) && normalizedResult.length <= phrase.length + 5) return true;
+                        return false;
+                    });
                     
                     if (isPromptEcho) {
                         console.log('🎤 Ignoring TTS prompt echo:', result.text);
-                        return; // Don't update state or process
+                        return; // Don't update state
                     }
                     
-                    // Only update state and process if it's NOT a prompt echo
+                    // Update state for both partial and final results (this enables live transcription)
                     setVoiceText(result.text);
+                    
                     if (result.isFinal && result.text.trim()) {
                         console.log('✅ Final result received, auto-stopping...');
-                        // Stop listening and process text directly (don't rely on state)
+                        // Stop listening and process text directly
                         handleStopVoiceInput(result.text);
                     }
                 },
@@ -224,16 +280,7 @@ export default function AddMedicationScreen() {
         try {
             console.log('🛑 User requested to stop voice input');
             
-            // Ensure textToProcess is a string (not an event object)
-            let textToUse: string | undefined;
-            if (typeof textToProcess === 'string' && textToProcess.trim()) {
-                textToUse = textToProcess;
-            } else if (voiceText && typeof voiceText === 'string' && voiceText.trim()) {
-                textToUse = voiceText;
-            }
-            
-            console.log('🛑 Text to process:', textToUse);
-            
+            // Stop listening and animations first
             await voiceInputService.stopListening();
             setIsListening(false);
             if (pulseAnimation.current) {
@@ -244,29 +291,30 @@ export default function AddMedicationScreen() {
             // Wait a moment for any final results to come through
             await new Promise<void>(resolve => setTimeout(() => resolve(), 300));
             
-            // Check state again after waiting (final results might have updated it)
-            const stateText = voiceText && typeof voiceText === 'string' ? voiceText.trim() : '';
-            const finalText = textToUse || stateText;
+            // Get the final text - prefer passed text, then state
+            const finalText = textToProcess || (voiceText && typeof voiceText === 'string' ? voiceText.trim() : '');
             
-            // Filter out TTS prompt if accidentally captured
+            // Filter out TTS prompt if accidentally captured (only check final text)
             const promptPhrase = "please tell me about your medication";
             const isPromptEcho = finalText.toLowerCase().includes(promptPhrase) && 
                                 finalText.toLowerCase().replace(/[^a-z]/g, '').length < 50;
             
             if (finalText && !isPromptEcho) {
                 console.log('📝 Processing voice text:', finalText);
+                // Don't clear voiceText yet - let it show during processing
                 processVoiceText(finalText);
             } else {
                 console.log('⚠️ No valid speech captured');
                 if (isPromptEcho) {
                     console.log('⚠️ Detected prompt echo, ignoring');
                 }
-                setVoiceText(''); // Clear any echo text
+                setVoiceText(''); // Only clear if no valid speech
                 speak("I didn't catch that. Please try again.");
             }
         } catch (error) {
             console.error('Stop voice error:', error);
             setIsListening(false);
+            setVoiceText(''); // Clear on error
             if (pulseAnimation.current) {
                 pulseAnimation.current.stop();
             }
@@ -280,52 +328,43 @@ export default function AddMedicationScreen() {
         }
 
         setIsProcessingVoice(true);
+        // Reset listening state and animations BEFORE processing
+        setIsListening(false);
+        if (pulseAnimation.current) {
+            pulseAnimation.current.stop();
+        }
+        pulseAnim.setValue(1);
+        // Keep voiceText visible during processing
+        
         try {
             const result = await extractPrescriptionFromText(text);
             
             if (result.medications && result.medications.length > 0) {
-                const med = result.medications[0]; // Take first medication
+                console.log('🎤 Navigating to review screen with', result.medications.length, 'medications');
+                speak(`Found ${result.medications.length} medication${result.medications.length > 1 ? 's' : ''}. Please review and confirm.`);
                 
-                // Auto-fill form
-                setName(med.name || '');
+                // Reset all voice states and cleanup service before navigating
+                setIsProcessingVoice(false);
+                setIsListening(false);
+                setVoiceText(''); // Clear here after we have the result
+                if (pulseAnimation.current) {
+                    pulseAnimation.current.stop();
+                }
+                pulseAnim.setValue(1);
                 
-                // Handle dosage with unit
-                if (med.dosage && med.dosageUnit) {
-                    setDosage(`${med.dosage} ${med.dosageUnit}`);
-                } else if (med.dosage) {
-                    setDosage(med.dosage);
-                } else if (med.dosageUnit) {
-                    setDosage(med.dosageUnit);
+                // Ensure voice service is properly stopped and cleaned up
+                try {
+                    await voiceInputService.stopListening();
+                } catch (error) {
+                    console.log('Error stopping voice service before navigation:', error);
                 }
                 
-                // Set frequency and times based on extracted data
-                if (med.times && med.times.length > 0) {
-                    // Store extracted times
-                    setExtractedTimes(med.times);
-                    
-                    if (med.times.length === 1) {
-                        setFrequency('Daily');
-                    } else if (med.times.length === 2) {
-                        setFrequency('Twice Daily');
-                    } else if (med.times.length === 3) {
-                        setFrequency('Thrice Daily');
-                    } else {
-                        setFrequency('Custom');
-                        setCustomTimes(med.times);
-                    }
-                } else if (med.frequency) {
-                    // Use frequency from extraction
-                    if (FREQUENCIES.includes(med.frequency)) {
-                        setFrequency(med.frequency);
-                    }
-                }
-                
-                if (med.instructions) {
-                    setNotes(med.instructions);
-                }
-                
-                speak(`I found ${med.name}. Please review and confirm.`);
+                // Navigate to PrescriptionReview screen with medications array
+                (navigation as any).navigate('PrescriptionReview', { 
+                    medications: result.medications 
+                });
             } else {
+                setVoiceText(''); // Clear if no medications found
                 Alert.alert(
                     'No Medication Found',
                     'Could not extract medication information from your voice input. Please try again or enter manually.',
@@ -335,6 +374,7 @@ export default function AddMedicationScreen() {
             }
         } catch (error) {
             console.error('Voice processing error:', error);
+            setVoiceText(''); // Clear on error
             const errorMsg = error instanceof Error ? error.message : 'Failed to process voice input';
             
             // Provide more helpful error messages
@@ -356,7 +396,7 @@ export default function AddMedicationScreen() {
             speak("Failed to process voice input. Please try again or enter manually.");
         } finally {
             setIsProcessingVoice(false);
-            setVoiceText('');
+            // Don't clear voiceText here - it's already cleared in success/error cases
         }
     };
 
@@ -484,19 +524,13 @@ export default function AddMedicationScreen() {
                     </View>
                 )}
 
-                {isProcessingVoice && (
-                    <View style={styles.processingContainer}>
-                        <ActivityIndicator size="small" color={colors.primary.purple} />
-                        <AccessibleText variant="caption" color={colors.primary.purple} style={{ marginLeft: spacing.s }}>
-                            Processing...
-                        </AccessibleText>
-                    </View>
-                )}
+
 
                 <TouchableOpacity
                     style={[
                         styles.voiceButton,
-                        isListening && styles.voiceButtonActive
+                        isListening && styles.voiceButtonActive,
+                        isProcessingVoice && styles.voiceButtonProcessing
                     ]}
                     onPress={() => {
                         if (isListening) {
@@ -506,29 +540,38 @@ export default function AddMedicationScreen() {
                         }
                     }}
                     disabled={isProcessingVoice}
-                    accessibilityLabel={isListening ? "Stop recording" : "Start voice input"}
+                    accessibilityLabel={
+                        isProcessingVoice 
+                            ? "Processing voice input" 
+                            : isListening 
+                                ? "Stop recording" 
+                                : "Start voice input"
+                    }
                     accessibilityRole="button"
                 >
                     <Animated.View
                         style={[
                             styles.voiceButtonInner,
                             {
-                                transform: [{ scale: pulseAnim }],
+                                // Don't pulse during processing
+                                transform: [{ scale: isProcessingVoice ? 1 : pulseAnim }],
                             },
                         ]}
                     >
                         <LinearGradient
                             colors={
-                                isListening
-                                    ? [colors.semantic.error, '#DC2626'] as [string, string, ...string[]]
-                                    : colors.gradients.primary as [string, string, ...string[]]
+                                isProcessingVoice
+                                    ? [colors.neutral.gray400, colors.neutral.gray500] as [string, string, ...string[]]
+                                    : isListening
+                                        ? [colors.semantic.error, '#DC2626'] as [string, string, ...string[]]
+                                        : colors.gradients.primary as [string, string, ...string[]]
                             }
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.voiceButtonGradient}
                         >
                             <Ionicons
-                                name={isListening ? 'stop' : 'mic'}
+                                name={isProcessingVoice ? 'hourglass-outline' : isListening ? 'stop' : 'mic'}
                                 size={32}
                                 color={colors.neutral.white}
                             />
@@ -536,7 +579,13 @@ export default function AddMedicationScreen() {
                     </Animated.View>
                 </TouchableOpacity>
 
-                {isListening && (
+                {isProcessingVoice && (
+                    <AccessibleText variant="caption" color={colors.primary.purple} style={styles.listeningText}>
+                        Processing...
+                    </AccessibleText>
+                )}
+
+                {isListening && !isProcessingVoice && (
                     <AccessibleText variant="caption" color={colors.primary.purple} style={styles.listeningText}>
                         Listening... Tap to stop
                     </AccessibleText>
@@ -844,6 +893,9 @@ const styles = StyleSheet.create({
     },
     voiceButtonActive: {
         ...layout.shadow.colored,
+    },
+    voiceButtonProcessing: {
+        opacity: 0.7,
     },
     listeningText: {
         fontWeight: '600',
