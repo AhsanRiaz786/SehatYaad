@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AccessibleText from './AccessibleText';
 import { colors, spacing, layout } from '../utils/theme';
@@ -9,6 +8,7 @@ import { Medication, logDose } from '../database/helpers';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
 import { useTTS } from '../context/TTSContext';
 import { playSuccessSound } from '../utils/sounds';
+import { useLanguage } from '../context/LanguageContext';
 
 interface DoseActionModalProps {
     visible: boolean;
@@ -25,6 +25,7 @@ export default function DoseActionModal({
     scheduledTime,
     onSuccess
 }: DoseActionModalProps) {
+    const { language, isRTL, t } = useLanguage();
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -123,7 +124,7 @@ export default function DoseActionModal({
             accessibilityRole="button"
             accessibilityLabel={accessibilityLabel || label}
         >
-            <Ionicons name={icon as any} size={32} color={color} />
+            <Icon name={icon as any} size={32} color={color} active={true} />
             <AccessibleText variant="body" style={[styles.actionLabel, { color }]}>
                 {label}
             </AccessibleText>
@@ -145,18 +146,13 @@ export default function DoseActionModal({
                 accessibilityLabel={`${medication.name} dose options`}
             >
                 <View style={styles.modalContainer}>
-                    <LinearGradient
-                        colors={colors.gradients.primary as [string, string, ...string[]]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.header}
-                    >
+                    <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <View style={styles.headerContent}>
                             <View style={styles.medicationInfo}>
-                                <AccessibleText variant="h3" color={colors.neutral.white}>
+                                <AccessibleText variant="h3" color={colors.text.charcoal}>
                                     {medication.name}
                                 </AccessibleText>
-                                <AccessibleText variant="body" color={colors.neutral.white} style={{ opacity: 0.9 }}>
+                                <AccessibleText variant="body" color={colors.text.charcoalLight}>
                                     {medication.dosage} • {scheduledTime}
                                 </AccessibleText>
                             </View>
@@ -164,44 +160,44 @@ export default function DoseActionModal({
                                 onPress={onClose}
                                 style={styles.closeButton}
                                 accessibilityRole="button"
-                                accessibilityLabel="Close dose actions"
+                                accessibilityLabel={language === 'ur' ? 'بند کریں' : 'Close dose actions'}
                             >
-                                <Ionicons name="close" size={28} color={colors.neutral.white} />
+                                <Icon name="close" size={28} color={colors.text.charcoal} />
                             </TouchableOpacity>
                         </View>
-                    </LinearGradient>
+                    </View>
 
                     <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                         <AccessibleText variant="h3" style={styles.sectionTitle}>
-                            What would you like to do?
+                            {language === 'ur' ? 'آپ کیا کرنا چاہیں گے؟' : 'What would you like to do?'}
                         </AccessibleText>
 
                         <View style={styles.actionsGrid}>
                             <ActionButton
-                                icon="checkmark-circle"
-                                label="Take Now"
+                                icon="checkmark"
+                                label={language === 'ur' ? 'ابھی لیں' : 'Take Now'}
                                 color={colors.semantic.success}
                                 onPress={() => handleAction('taken')}
                                 accessibilityLabel={`Mark ${medication.name} dose at ${scheduledTime} as taken now`}
                             />
                             <ActionButton
                                 icon="calendar"
-                                label="Backdate"
-                                color={colors.primary.purple}
+                                label={language === 'ur' ? 'پچھلی تاریخ' : 'Backdate'}
+                                color={colors.primary.forestGreen}
                                 onPress={handleBackdate}
                                 accessibilityLabel={`Mark ${medication.name} dose as taken earlier`}
                             />
                             <ActionButton
-                                icon="close-circle"
-                                label="Mark Missed"
+                                icon="close"
+                                label={language === 'ur' ? 'چھوٹا ہوا نشان لگائیں' : 'Mark Missed'}
                                 color={colors.semantic.error}
                                 onPress={() => handleAction('missed')}
                                 accessibilityLabel={`Mark ${medication.name} dose at ${scheduledTime} as missed`}
                             />
                             <ActionButton
-                                icon="remove-circle"
-                                label="Skip"
-                                color={colors.neutral.gray500}
+                                icon="x"
+                                label={language === 'ur' ? 'چھوڑ دیں' : 'Skip'}
+                                color={colors.text.charcoalLight}
                                 onPress={() => handleAction('skipped')}
                                 accessibilityLabel={`Skip ${medication.name} dose at ${scheduledTime}`}
                             />
@@ -209,12 +205,12 @@ export default function DoseActionModal({
 
                         <View style={styles.notesSection}>
                             <AccessibleText variant="body" style={styles.notesLabel}>
-                                Notes (Optional)
+                                {language === 'ur' ? 'نوٹ (اختیاری)' : 'Notes (Optional)'}
                             </AccessibleText>
                             <TextInput
                                 style={styles.notesInput}
-                                placeholder="Add a note about this dose..."
-                                placeholderTextColor={colors.neutral.gray400}
+                                placeholder={language === 'ur' ? 'اس خوری کے بارے میں نوٹ شامل کریں...' : 'Add a note about this dose...'}
+                                placeholderTextColor={colors.border.gray}
                                 value={notes}
                                 onChangeText={setNotes}
                                 multiline
@@ -258,16 +254,21 @@ const styles = StyleSheet.create({
     modalContainer: {
         width: '90%',
         maxWidth: 500,
-        backgroundColor: colors.neutral.white,
+        backgroundColor: colors.background.white,
         borderRadius: layout.borderRadius.large,
         overflow: 'hidden',
-        ...layout.shadow.large,
+        ...layout.border.default,
+        borderWidth: 1,
     },
     header: {
         padding: spacing.l,
+        backgroundColor: colors.background.cream,
+        ...layout.border.default,
+        borderTopWidth: 0,
+        borderLeftWidth: 0,
+        borderRightWidth: 0,
     },
     headerContent: {
-        flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
     },
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         marginBottom: spacing.m,
-        color: colors.neutral.gray800,
+        color: colors.text.charcoal,
     },
     actionsGrid: {
         flexDirection: 'row',
@@ -298,13 +299,14 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: '45%',
         aspectRatio: 1,
-        borderWidth: 2,
+        borderWidth: 1,
         borderRadius: layout.borderRadius.medium,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: colors.neutral.white,
+        backgroundColor: colors.background.white,
         padding: spacing.m,
         gap: spacing.s,
+        ...layout.border.default,
     },
     actionLabel: {
         fontWeight: '600',
@@ -315,17 +317,17 @@ const styles = StyleSheet.create({
     },
     notesLabel: {
         marginBottom: spacing.s,
-        color: colors.neutral.gray700,
+        color: colors.text.charcoal,
         fontWeight: '500',
     },
     notesInput: {
         borderWidth: 1,
-        borderColor: colors.neutral.gray300,
+        borderColor: colors.border.gray,
         borderRadius: layout.borderRadius.medium,
         padding: spacing.m,
         fontSize: 16,
-        color: colors.neutral.gray800,
-        backgroundColor: colors.neutral.gray100,
+        color: colors.text.charcoal,
+        backgroundColor: colors.background.cream,
         minHeight: 80,
     },
 });

@@ -1,8 +1,8 @@
 import React from 'react';
 import { TouchableOpacity, TouchableOpacityProps, StyleSheet, ViewStyle, ActivityIndicator, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import AccessibleText from './AccessibleText';
-import { colors, spacing, layout, typography, animation } from '../utils/theme';
+import { colors, spacing, layout } from '../utils/theme';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AccessibleButtonProps extends TouchableOpacityProps {
     title: string;
@@ -29,18 +29,7 @@ export default function AccessibleButton({
     disabled,
     ...props
 }: AccessibleButtonProps) {
-    const getGradientColors = () => {
-        switch (variant) {
-            case 'primary':
-                return colors.gradients.primary;
-            case 'success':
-                return colors.gradients.success;
-            case 'danger':
-                return colors.gradients.danger;
-            default:
-                return colors.gradients.primary;
-        }
-    };
+    const { isRTL } = useLanguage();
 
     const getHeight = () => {
         switch (size) {
@@ -49,10 +38,59 @@ export default function AccessibleButton({
             case 'large':
                 return layout.touchableHeightLarge;
             default:
-                return layout.touchableHeight;
+                return layout.touchableHeight; // Minimum 56px for primary actions (Fitts's Law)
         }
     };
 
+    const getVariantStyles = () => {
+        switch (variant) {
+            case 'primary':
+                return {
+                    backgroundColor: colors.primary.forestGreen,
+                    borderColor: colors.primary.forestGreen,
+                    textColor: colors.background.white,
+                };
+            case 'success':
+                return {
+                    backgroundColor: colors.semantic.success,
+                    borderColor: colors.semantic.success,
+                    textColor: colors.background.white,
+                };
+            case 'danger':
+                return {
+                    backgroundColor: colors.semantic.error,
+                    borderColor: colors.semantic.error,
+                    textColor: colors.background.white,
+                };
+            case 'secondary':
+                return {
+                    backgroundColor: colors.background.white,
+                    borderColor: colors.primary.forestGreen,
+                    textColor: colors.primary.forestGreen,
+                };
+            case 'outline':
+                return {
+                    backgroundColor: 'transparent',
+                    borderColor: colors.border.grayDark,
+                    textColor: colors.text.charcoal,
+                };
+            case 'ghost':
+                return {
+                    backgroundColor: 'transparent',
+                    borderColor: 'transparent',
+                    textColor: colors.primary.forestGreen,
+                };
+            default:
+                return {
+                    backgroundColor: colors.primary.forestGreen,
+                    borderColor: colors.primary.forestGreen,
+                    textColor: colors.background.white,
+                };
+        }
+    };
+
+    const variantStyles = getVariantStyles();
+    const height = getHeight();
     const isOutlineVariant = variant === 'secondary' || variant === 'ghost' || variant === 'outline';
 
     const buttonContent = (
@@ -60,79 +98,60 @@ export default function AccessibleButton({
             {loading ? (
                 <ActivityIndicator
                     size="small"
-                    color={isOutlineVariant ? colors.primary.purple : colors.neutral.white}
+                    color={variantStyles.textColor}
                 />
             ) : (
-                <View style={styles.contentContainer}>
+                <View
+                    style={[
+                        styles.contentContainer,
+                        {
+                            flexDirection: isRTL ? 'row-reverse' : 'row',
+                        },
+                    ]}
+                >
                     {icon && iconPosition === 'left' && (
-                        <View style={styles.iconLeft}>{icon}</View>
+                        <View style={isRTL ? styles.iconRight : styles.iconLeft}>
+                            {icon}
+                        </View>
                     )}
                     <AccessibleText
                         variant="button"
-                        color={isOutlineVariant ? colors.primary.purple : colors.neutral.white}
+                        color={variantStyles.textColor}
                         style={[styles.text, textStyle]}
                     >
                         {title}
                     </AccessibleText>
                     {icon && iconPosition === 'right' && (
-                        <View style={styles.iconRight}>{icon}</View>
+                        <View style={isRTL ? styles.iconLeft : styles.iconRight}>
+                            {icon}
+                        </View>
                     )}
                 </View>
             )}
         </>
     );
 
-    if (isOutlineVariant) {
-        // Outline or Ghost button - no gradient background
-        return (
-            <TouchableOpacity
-                style={[
-                    styles.button,
-                    {
-                        height: getHeight(),
-                        borderWidth: variant === 'secondary' ? 2 : 0,
-                        borderColor: colors.primary.purple,
-                        backgroundColor: variant === 'ghost' ? 'transparent' : colors.neutral.white,
-                    },
-                    disabled && styles.disabled,
-                    style,
-                ]}
-                onPress={onPress}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={title}
-                disabled={disabled || loading}
-                {...props}
-            >
-                {buttonContent}
-            </TouchableOpacity>
-        );
-    }
-
-    // Gradient button (primary, success, danger)
     return (
         <TouchableOpacity
             style={[
                 styles.button,
-                { height: getHeight() },
+                {
+                    height,
+                    backgroundColor: variantStyles.backgroundColor,
+                    borderColor: variantStyles.borderColor,
+                    borderWidth: variant === 'ghost' ? 0 : 1,
+                },
                 disabled && styles.disabled,
                 style,
             ]}
             onPress={onPress}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={title}
             disabled={disabled || loading}
             {...props}
         >
-            <LinearGradient
-                colors={getGradientColors() as [string, string, ...string[]]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradient}
-            >
-                {buttonContent}
-            </LinearGradient>
+            {buttonContent}
         </TouchableOpacity>
     );
 }
@@ -140,19 +159,14 @@ export default function AccessibleButton({
 const styles = StyleSheet.create({
     button: {
         borderRadius: layout.borderRadius.medium,
-        width: '100%',
+        width: '100%', // Full width as per Fitts's Law
         marginVertical: spacing.s,
-        overflow: 'hidden',
-        ...layout.shadow.medium,
-    },
-    gradient: {
-        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: spacing.l,
+        paddingHorizontal: spacing.m,
+        ...layout.border.default, // 1px border instead of shadow
     },
     contentContainer: {
-        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
     },
