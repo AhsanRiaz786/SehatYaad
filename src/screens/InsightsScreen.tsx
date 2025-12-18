@@ -35,16 +35,7 @@ export default function InsightsScreen() {
     const [recommendations, setRecommendations] = useState<ScheduleRecommendation[]>([]);
     const [applyingId, setApplyingId] = useState<string | null>(null);
 
-    useFocusEffect(
-        React.useCallback(() => {
-            loadAnalytics();
-        }, [])
-    );
-
-    useEffect(() => {
-        loadAnalytics();
-    }, [timeRange]);
-    const loadAnalytics = async () => {
+    const loadAnalytics = React.useCallback(async () => {
         try {
             setLoading(true);
 
@@ -76,7 +67,17 @@ export default function InsightsScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [timeRange]);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            loadAnalytics();
+        }, [loadAnalytics])
+    );
+
+    useEffect(() => {
+        loadAnalytics();
+    }, [loadAnalytics]);
 
     const handleApplyRecommendation = async (rec: ScheduleRecommendation) => {
         try {
@@ -272,7 +273,8 @@ export default function InsightsScreen() {
                                 </TouchableOpacity>
                             </View>
                         </View>
-                    )})}
+                        );
+                    })}
                 </View>
             )}
 
@@ -289,19 +291,7 @@ export default function InsightsScreen() {
                 </View>
             )}
 
-            {/* Health Tip */}
-            <View style={styles.tipCard}>
-                <View style={styles.tipHeader}>
-                    <Ionicons name="bulb" size={24} color={colors.primary.orange} />
-                    <AccessibleText variant="h3" style={styles.tipTitle}>
-                        Health Tip
-                    </AccessibleText>
-                </View>
-                <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.tipText}>
-                    Taking your medication at the same time every day helps create a consistent routine and
-                    improves adherence by up to 30%.
-                </AccessibleText>
-            </View>
+
         </ScrollView>
     );
 }

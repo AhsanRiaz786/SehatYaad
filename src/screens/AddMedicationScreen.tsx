@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     },
     colorSelected: {
         borderColor: colors.neutral.white,
-        ...layout.shadow.medium,
+        ...layout.shadow.small,
         transform: [{ scale: 1.1 }],
     },
     saveButton: {
@@ -889,10 +889,10 @@ const styles = StyleSheet.create({
         borderRadius: 40,
         justifyContent: 'center',
         alignItems: 'center',
-        ...layout.shadow.large,
+        ...layout.shadow.small,
     },
     voiceButtonActive: {
-        ...layout.shadow.colored,
+        ...layout.shadow.small,
     },
     voiceButtonProcessing: {
         opacity: 0.7,

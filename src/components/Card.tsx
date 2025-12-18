@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
         borderRadius: layout.borderRadius.large,
         padding: layout.cardPadding,
         marginBottom: layout.cardMargin,
-        ...layout.shadow.medium,
+        ...layout.shadow.small,
     },
     gradientCard: {
         padding: 0,
@@ -74,6 +74,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.5)',
-        ...layout.shadow.large,
+        ...layout.shadow.small,
     },
 });

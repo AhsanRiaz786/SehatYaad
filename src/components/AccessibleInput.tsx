@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     },
     inputContainerFocused: {
         borderColor: colors.primary.purple,
-        ...layout.shadow.medium,
+        ...layout.shadow.small,
     },
     inputContainerError: {
         borderColor: colors.semantic.error,

@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initDatabase } from './src/database/init';
 import AppNavigator from './src/navigation/AppNavigator';
-import { Text, View } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors } from './src/utils/theme';
 
 import { TTSProvider } from './src/context/TTSContext';
 import { LanguageProvider } from './src/context/LanguageContext';
@@ -17,19 +19,22 @@ export default function App() {
         await initDatabase();
         setDbInitialized(true);
       } catch (e) {
-        console.warn(e);
+        // Error handled silently - database initialization will retry
+        console.warn('Database initialization error:', e);
       }
     }
     setup();
   }, []);
 
-
-
   if (!dbInitialized) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading...</Text>
-      </View>
+      <LinearGradient
+        colors={[colors.primary.teal, colors.primary.purple, colors.primary.pink]}
+        locations={[0, 0.5, 1]}
+        style={styles.loadingContainer}
+      >
+        <ActivityIndicator size="large" color={colors.neutral.white} />
+      </LinearGradient>
     );
   }
 
@@ -44,3 +49,11 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
