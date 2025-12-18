@@ -1,22 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Switch, TextInput } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { View, StyleSheet, ScrollView, Alert, Switch, TouchableOpacity } from 'react-native';
 import { useTTS } from '../context/TTSContext';
+import { useLanguage } from '../context/LanguageContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AccessibleButton from '../components/AccessibleButton';
 import AccessibleText from '../components/AccessibleText';
 import AccessibleInput from '../components/AccessibleInput';
 import Card from '../components/Card';
-import { seedDatabase } from '../database/seed';
 import { colors, spacing, layout } from '../utils/theme';
-import { testNotification, getAllScheduledNotifications, requestPermissions } from '../services/notificationService';
-import * as Notifications from 'expo-notifications';
-import { getCaregiverInfo, saveCaregiverInfo, testCaregiverAlert, CaregiverInfo } from '../services/caregiverService';
+import { getCaregiverInfo, saveCaregiverInfo, CaregiverInfo } from '../services/caregiverService';
+import { getSetting, updateSetting } from '../database/helpers';
+
+type VoiceSpeed = 'slow' | 'medium' | 'fast';
+type VoicePitch = 'low' | 'medium' | 'high';
+type VoiceVolume = 'low' | 'medium' | 'high';
+
+const VOICE_SPEED_MAP: Record<VoiceSpeed, number> = {
+    slow: 0.75,
+    medium: 1.0,
+    fast: 1.5,
+};
+
+const VOICE_PITCH_MAP: Record<VoicePitch, number> = {
+    low: 0.75,
+    medium: 1.0,
+    high: 1.25,
+};
+
+const VOICE_VOLUME_MAP: Record<VoiceVolume, number> = {
+    low: 0.5,
+    medium: 0.75,
+    high: 1.0,
+};
 
 export default function SettingsScreen() {
-    const [permissionsGranted, setPermissionsGranted] = useState(false);
-    const { enabled, setEnabled, rate, setRate, pitch, setPitch, volume, setVolume, speak } = useTTS();
+    const { enabled, setEnabled, rate, setRate, pitch: currentPitch, setPitch, volume: currentVolume, setVolume, speak } = useTTS();
+    const { language, setLanguage } = useLanguage();
+
+    // Voice Settings
+    const [voiceSpeed, setVoiceSpeed] = useState<VoiceSpeed>('medium');
+    const [voicePitch, setVoicePitch] = useState<VoicePitch>('medium');
+    const [voiceVolume, setVoiceVolume] = useState<VoiceVolume>('high');
 
     // Caregiver Settings State
     const [caregiver, setCaregiver] = useState<CaregiverInfo>({
@@ -25,14 +50,79 @@ export default function SettingsScreen() {
         email: '',
         relationship: '',
         enabled: false,
-        missThreshold: 3
+        missThreshold: 3,
     });
     const [isSaving, setIsSaving] = useState(false);
 
+    // Adaptive Reminders Settings
+    const [adaptiveEnabled, setAdaptiveEnabled] = useState(true);
+    const [prealertsEnabled, setPrealertsEnabled] = useState(true);
+
     useEffect(() => {
-        checkPermissions();
         loadCaregiverSettings();
+        loadSettings();
+        // Initialize voice settings from current values
+        if (rate <= 0.85) {
+            setVoiceSpeed('slow');
+        } else if (rate <= 1.25) {
+            setVoiceSpeed('medium');
+        } else {
+            setVoiceSpeed('fast');
+        }
+
+        if (currentPitch <= 0.85) {
+            setVoicePitch('low');
+        } else if (currentPitch <= 1.15) {
+            setVoicePitch('medium');
+        } else {
+            setVoicePitch('high');
+        }
+
+        if (currentVolume <= 0.6) {
+            setVoiceVolume('low');
+        } else if (currentVolume <= 0.85) {
+            setVoiceVolume('medium');
+        } else {
+            setVoiceVolume('high');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const handleSpeedChange = (speed: VoiceSpeed) => {
+        setVoiceSpeed(speed);
+        setRate(VOICE_SPEED_MAP[speed]);
+    };
+
+    const handlePitchChange = (pitchValue: VoicePitch) => {
+        setVoicePitch(pitchValue);
+        setPitch(VOICE_PITCH_MAP[pitchValue]);
+    };
+
+    const handleVolumeChange = (vol: VoiceVolume) => {
+        setVoiceVolume(vol);
+        setVolume(VOICE_VOLUME_MAP[vol]);
+    };
+
+    const loadSettings = async () => {
+        try {
+            const adaptive = await getSetting('adaptive_enabled', 'true');
+            const prealerts = await getSetting('prealerts_enabled', 'true');
+            setAdaptiveEnabled(adaptive === 'true');
+            setPrealertsEnabled(prealerts === 'true');
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    };
+
+    const handleAdaptiveToggle = async (value: boolean) => {
+        setAdaptiveEnabled(value);
+        await updateSetting('adaptive_enabled', value ? 'true' : 'false');
+    };
+
+    const handlePrealertsToggle = async (value: boolean) => {
+        setPrealertsEnabled(value);
+        await updateSetting('prealerts_enabled', value ? 'true' : 'false');
+    };
 
     const loadCaregiverSettings = async () => {
         try {
@@ -55,60 +145,12 @@ export default function SettingsScreen() {
         }
     };
 
-    const handleTestCaregiverAlert = async () => {
-        if (!caregiver.phone) {
-            Alert.alert('Error', 'Please provide a caregiver phone number first');
-            return;
-        }
+    const handleLanguageChange = async (lang: 'en' | 'ur') => {
         try {
-            await testCaregiverAlert(caregiver);
+            await setLanguage(lang);
+            Alert.alert('Success', 'Language changed. Please restart the app for changes to take effect.');
         } catch (error) {
-            Alert.alert('Error', 'Failed to send test alert');
-        }
-    };
-
-    const checkPermissions = async () => {
-        const { status } = await Notifications.getPermissionsAsync();
-        setPermissionsGranted(status === 'granted');
-    };
-
-    const handleSeed = async () => {
-        try {
-            await seedDatabase();
-            Alert.alert('Success', 'Database seeded with sample data');
-        } catch (error) {
-            Alert.alert('Error', 'Failed to seed database');
-        }
-    };
-
-    const handleTestNotification = async () => {
-        try {
-            await testNotification();
-            Alert.alert('Success', 'Test notification scheduled! It will appear in 2 seconds.');
-        } catch (error) {
-            Alert.alert('Error', 'Failed to send test notification');
-        }
-    };
-
-    const handleViewScheduled = async () => {
-        try {
-            const notifications = await getAllScheduledNotifications();
-            Alert.alert(
-                'Scheduled Notifications',
-                `You have ${notifications.length} scheduled reminders`
-            );
-        } catch (error) {
-            Alert.alert('Error', 'Failed to get scheduled notifications');
-        }
-    };
-
-    const handleRequestPermissions = async () => {
-        const granted = await requestPermissions();
-        setPermissionsGranted(granted);
-        if (granted) {
-            Alert.alert('Success', 'Notification permissions granted!');
-        } else {
-            Alert.alert('Error', 'Notification permissions denied');
+            Alert.alert('Error', 'Failed to change language');
         }
     };
 
@@ -125,99 +167,235 @@ export default function SettingsScreen() {
                 <AccessibleText variant="h1" color={colors.neutral.white} style={styles.headerTitle}>
                     Settings
                 </AccessibleText>
-                <AccessibleText variant="body" color={colors.neutral.white} style={{ opacity: 0.9 }}>
+                <AccessibleText variant="body" color={colors.neutral.white} style={styles.headerSubtitle}>
                     Manage your preferences
                 </AccessibleText>
             </LinearGradient>
 
+            {/* Language Settings */}
+            <Card style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="language" size={24} color={colors.primary.forestGreen} />
+                        </View>
+                        <AccessibleText variant="h3" style={styles.sectionTitle}>
+                            Language
+                        </AccessibleText>
+                    </View>
+                </View>
+
+                <View style={styles.languageRow}>
+                    <TouchableOpacity
+                        style={[styles.languageOption, language === 'en' && styles.languageOptionActive]}
+                        onPress={() => handleLanguageChange('en')}
+                        activeOpacity={0.7}
+                    >
+                        <AccessibleText
+                            variant="body"
+                            color={language === 'en' ? colors.neutral.white : colors.text.charcoal}
+                            style={styles.languageText}
+                        >
+                            English
+                        </AccessibleText>
+                        {language === 'en' && (
+                            <Ionicons name="checkmark-circle" size={20} color={colors.neutral.white} />
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.languageOption, language === 'ur' && styles.languageOptionActive]}
+                        onPress={() => handleLanguageChange('ur')}
+                        activeOpacity={0.7}
+                    >
+                        <AccessibleText
+                            variant="body"
+                            color={language === 'ur' ? colors.neutral.white : colors.text.charcoal}
+                            style={styles.languageText}
+                        >
+                            اردو
+                        </AccessibleText>
+                        {language === 'ur' && (
+                            <Ionicons name="checkmark-circle" size={20} color={colors.neutral.white} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </Card>
+
             {/* Voice Feedback Section */}
             <Card style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Ionicons name="mic" size={24} color={colors.primary.blue} />
-                    <AccessibleText variant="h3" style={styles.sectionTitle}>
-                        Voice Feedback
-                    </AccessibleText>
+                    <View style={styles.sectionHeaderLeft}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="mic" size={24} color={colors.primary.orange} />
+                        </View>
+                        <AccessibleText variant="h3" style={styles.sectionTitle}>
+                            Voice Feedback
+                        </AccessibleText>
+                    </View>
                     <Switch
                         value={enabled}
                         onValueChange={setEnabled}
-                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.blue }}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
                         thumbColor={colors.neutral.white}
                     />
                 </View>
 
                 {enabled && (
-                    <>
-                        <View style={styles.settingRow}>
-                            <AccessibleText variant="body" color={colors.neutral.gray700}>
-                                Speech Rate: {rate.toFixed(1)}x
+                    <View style={styles.voiceSettingsContent}>
+                        <View style={styles.voiceSettingRow}>
+                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.voiceSettingLabel}>
+                                Speed
                             </AccessibleText>
-                            <Slider
-                                style={styles.slider}
-                                minimumValue={0.5}
-                                maximumValue={2.0}
-                                step={0.1}
-                                value={rate}
-                                onSlidingComplete={setRate}
-                                minimumTrackTintColor={colors.primary.blue}
-                                maximumTrackTintColor={colors.neutral.gray300}
-                                thumbTintColor={colors.primary.blue}
-                            />
+                            <View style={styles.optionRow}>
+                                {(['slow', 'medium', 'fast'] as VoiceSpeed[]).map((option) => (
+                                    <TouchableOpacity
+                                        key={option}
+                                        style={[
+                                            styles.optionButton,
+                                            voiceSpeed === option && styles.optionButtonActive,
+                                        ]}
+                                        onPress={() => handleSpeedChange(option)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <AccessibleText
+                                            variant="caption"
+                                            color={voiceSpeed === option ? colors.neutral.white : colors.text.charcoal}
+                                            style={styles.optionButtonText}
+                                        >
+                                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                                        </AccessibleText>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
 
-                        <View style={styles.settingRow}>
-                            <AccessibleText variant="body" color={colors.neutral.gray700}>
-                                Pitch: {pitch.toFixed(1)}
+                        <View style={styles.voiceSettingRow}>
+                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.voiceSettingLabel}>
+                                Pitch
                             </AccessibleText>
-                            <Slider
-                                style={styles.slider}
-                                minimumValue={0.5}
-                                maximumValue={2.0}
-                                step={0.1}
-                                value={pitch}
-                                onSlidingComplete={setPitch}
-                                minimumTrackTintColor={colors.primary.blue}
-                                maximumTrackTintColor={colors.neutral.gray300}
-                                thumbTintColor={colors.primary.blue}
-                            />
+                            <View style={styles.optionRow}>
+                                {(['low', 'medium', 'high'] as VoicePitch[]).map((option) => (
+                                    <TouchableOpacity
+                                        key={option}
+                                        style={[
+                                            styles.optionButton,
+                                            voicePitch === option && styles.optionButtonActive,
+                                        ]}
+                                        onPress={() => handlePitchChange(option)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <AccessibleText
+                                            variant="caption"
+                                            color={voicePitch === option ? colors.neutral.white : colors.text.charcoal}
+                                            style={styles.optionButtonText}
+                                        >
+                                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                                        </AccessibleText>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
 
-                        <View style={styles.settingRow}>
-                            <AccessibleText variant="body" color={colors.neutral.gray700}>
-                                Volume: {Math.round(volume * 100)}%
+                        <View style={styles.voiceSettingRow}>
+                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.voiceSettingLabel}>
+                                Volume
                             </AccessibleText>
-                            <Slider
-                                style={styles.slider}
-                                minimumValue={0.0}
-                                maximumValue={1.0}
-                                step={0.1}
-                                value={volume}
-                                onSlidingComplete={setVolume}
-                                minimumTrackTintColor={colors.primary.blue}
-                                maximumTrackTintColor={colors.neutral.gray300}
-                                thumbTintColor={colors.primary.blue}
-                            />
+                            <View style={styles.optionRow}>
+                                {(['low', 'medium', 'high'] as VoiceVolume[]).map((option) => (
+                                    <TouchableOpacity
+                                        key={option}
+                                        style={[
+                                            styles.optionButton,
+                                            voiceVolume === option && styles.optionButtonActive,
+                                        ]}
+                                        onPress={() => handleVolumeChange(option)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <AccessibleText
+                                            variant="caption"
+                                            color={voiceVolume === option ? colors.neutral.white : colors.text.charcoal}
+                                            style={styles.optionButtonText}
+                                        >
+                                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                                        </AccessibleText>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
 
                         <AccessibleButton
-                            title="Test Voice Settings"
-                            onPress={() => speak("This is a test of the voice settings.", true)}
+                            title="Test Voice"
+                            onPress={() => speak('This is a test of the voice settings.')}
                             variant="outline"
                             size="small"
                             icon={<Ionicons name="play-circle-outline" size={16} color={colors.primary.blue} />}
                             iconPosition="left"
-                            style={{ marginTop: spacing.m }}
+                            style={styles.testButton}
                         />
-                    </>
+                    </View>
                 )}
+            </Card>
+
+            {/* Adaptive Reminders Section */}
+            <Card style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="bulb" size={24} color={colors.primary.orange} />
+                        </View>
+                        <AccessibleText variant="h3" style={styles.sectionTitle}>
+                            Smart Reminders
+                        </AccessibleText>
+                    </View>
+                </View>
+
+                <View style={styles.switchRow}>
+                    <View style={styles.switchRowContent}>
+                        <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.switchLabel}>
+                            Adaptive Scheduling
+                        </AccessibleText>
+                        <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.switchDescription}>
+                            Automatically adjust reminder times based on your medication-taking patterns
+                        </AccessibleText>
+                    </View>
+                    <Switch
+                        value={adaptiveEnabled}
+                        onValueChange={handleAdaptiveToggle}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        thumbColor={colors.neutral.white}
+                    />
+                </View>
+
+                <View style={[styles.switchRow, styles.switchRowWithBorder]}>
+                    <View style={styles.switchRowContent}>
+                        <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.switchLabel}>
+                            Pre-Alerts
+                        </AccessibleText>
+                        <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.switchDescription}>
+                            Get advance reminders for medications you often miss or snooze
+                        </AccessibleText>
+                    </View>
+                    <Switch
+                        value={prealertsEnabled}
+                        onValueChange={handlePrealertsToggle}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        thumbColor={colors.neutral.white}
+                    />
+                </View>
             </Card>
 
             {/* Caregiver Section */}
             <Card style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Ionicons name="people" size={24} color={colors.primary.orange} />
-                    <AccessibleText variant="h3" style={styles.sectionTitle}>
-                        Caregiver Setup
-                    </AccessibleText>
+                    <View style={styles.sectionHeaderLeft}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="people" size={24} color={colors.primary.orange} />
+                        </View>
+                        <AccessibleText variant="h3" style={styles.sectionTitle}>
+                            Caregiver Setup
+                        </AccessibleText>
+                    </View>
                     <Switch
                         value={caregiver.enabled}
                         onValueChange={(val: boolean) => setCaregiver(prev => ({ ...prev, enabled: val }))}
@@ -226,210 +404,107 @@ export default function SettingsScreen() {
                     />
                 </View>
 
-                <AccessibleText variant="caption" color={colors.neutral.gray600} style={{ marginBottom: spacing.m }}>
+                <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.sectionDescription}>
                     Notifications will be sent to your caregiver if you miss doses consistently.
                 </AccessibleText>
 
-                <AccessibleInput
-                    label="Caregiver Name"
-                    value={caregiver.name}
-                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, name: val }))}
-                    placeholder="e.g. Ali Khan"
-                    icon={<Ionicons name="person-outline" size={20} color={colors.neutral.gray600} />}
-                />
-
-                <AccessibleInput
-                    label="Phone Number"
-                    value={caregiver.phone}
-                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, phone: val }))}
-                    placeholder="e.g. +923001234567"
-                    keyboardType="phone-pad"
-                    icon={<Ionicons name="call-outline" size={20} color={colors.neutral.gray600} />}
-                />
-
-                <AccessibleInput
-                    label="Email (Optional)"
-                    value={caregiver.email}
-                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, email: val }))}
-                    placeholder="e.g. caregiver@example.com"
-                    keyboardType="email-address"
-                    icon={<Ionicons name="mail-outline" size={20} color={colors.neutral.gray600} />}
-                />
-
-                <AccessibleInput
-                    label="Relationship"
-                    value={caregiver.relationship}
-                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, relationship: val }))}
-                    placeholder="e.g. Son, Daughter, Spouse"
-                    icon={<Ionicons name="heart-outline" size={20} color={colors.neutral.gray600} />}
-                />
-
-                <View style={[styles.settingRow, { marginTop: spacing.m }]}>
-                    <AccessibleText variant="body" color={colors.neutral.gray700}>
-                        Alert after {caregiver.missThreshold} missed doses
-                    </AccessibleText>
-                    <Slider
-                        style={styles.slider}
-                        minimumValue={1}
-                        maximumValue={10}
-                        step={1}
-                        value={caregiver.missThreshold}
-                        onSlidingComplete={(val: number) => setCaregiver(prev => ({ ...prev, missThreshold: val }))}
-                        minimumTrackTintColor={colors.primary.orange}
-                        maximumTrackTintColor={colors.neutral.gray300}
-                        thumbTintColor={colors.primary.orange}
-                    />
-                </View>
-
-                <View style={styles.buttonRow}>
-                    <AccessibleButton
-                        title="Test Alert"
-                        onPress={handleTestCaregiverAlert}
-                        variant="outline"
-                        size="small"
-                        icon={<Ionicons name="send-outline" size={16} color={colors.primary.orange} />}
-                        style={{ flex: 1, marginRight: spacing.s }}
-                    />
-                    <AccessibleButton
-                        title={isSaving ? "Saving..." : "Save Settings"}
-                        onPress={handleSaveCaregiver}
-                        variant="primary"
-                        size="small"
-                        disabled={isSaving}
-                        icon={<Ionicons name="save-outline" size={16} color={colors.neutral.white} />}
-                        style={{ flex: 1 }}
-                    />
-                </View>
-            </Card>
-
-            {/* Notifications Section */}
-            <Card style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <Ionicons name="notifications" size={24} color={colors.primary.purple} />
-                    <AccessibleText variant="h3" style={styles.sectionTitle}>
-                        Notifications
-                    </AccessibleText>
-                </View>
-
-                <View style={styles.statusRow}>
-                    <AccessibleText variant="body" color={colors.neutral.gray700}>
-                        Permission Status
-                    </AccessibleText>
-                    <View style={styles.statusBadge}>
-                        <Ionicons
-                            name={permissionsGranted ? "checkmark-circle" : "close-circle"}
-                            size={16}
-                            color={permissionsGranted ? colors.semantic.success : colors.semantic.error}
+                {caregiver.enabled && (
+                    <View style={styles.caregiverForm}>
+                        <AccessibleInput
+                            label="Caregiver Name"
+                            value={caregiver.name}
+                            onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, name: val }))}
+                            placeholder="e.g. Ali Khan"
+                            icon={<Ionicons name="person-outline" size={20} color={colors.neutral.gray600} />}
                         />
-                        <AccessibleText
-                            variant="caption"
-                            color={permissionsGranted ? colors.semantic.success : colors.semantic.error}
-                            style={styles.statusText}
-                        >
-                            {permissionsGranted ? 'Granted' : 'Not Granted'}
-                        </AccessibleText>
+
+                        <AccessibleInput
+                            label="Phone Number"
+                            value={caregiver.phone}
+                            onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, phone: val }))}
+                            placeholder="e.g. +923001234567"
+                            keyboardType="phone-pad"
+                            icon={<Ionicons name="call-outline" size={20} color={colors.neutral.gray600} />}
+                        />
+
+                        <AccessibleInput
+                            label="Email (Optional)"
+                            value={caregiver.email}
+                            onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, email: val }))}
+                            placeholder="e.g. caregiver@example.com"
+                            keyboardType="email-address"
+                            icon={<Ionicons name="mail-outline" size={20} color={colors.neutral.gray600} />}
+                        />
+
+                        <AccessibleInput
+                            label="Relationship"
+                            value={caregiver.relationship}
+                            onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, relationship: val }))}
+                            placeholder="e.g. Son, Daughter, Spouse"
+                            icon={<Ionicons name="heart-outline" size={20} color={colors.neutral.gray600} />}
+                        />
+
+                        <View style={styles.missThresholdRow}>
+                            <View style={styles.missThresholdLabel}>
+                                <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.missThresholdLabelText}>
+                                    Alert Threshold
+                                </AccessibleText>
+                                <AccessibleText variant="caption" color={colors.neutral.gray600}>
+                                    Alert after {caregiver.missThreshold} missed {caregiver.missThreshold === 1 ? 'dose' : 'doses'}
+                                </AccessibleText>
+                            </View>
+                            <View style={styles.missThresholdControls}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.missThresholdButton,
+                                        caregiver.missThreshold > 1 && styles.missThresholdButtonActive,
+                                    ]}
+                                    onPress={() => setCaregiver(prev => ({ ...prev, missThreshold: Math.max(1, prev.missThreshold - 1) }))}
+                                    disabled={caregiver.missThreshold <= 1}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name="remove"
+                                        size={20}
+                                        color={caregiver.missThreshold > 1 ? colors.neutral.white : colors.neutral.gray400}
+                                    />
+                                </TouchableOpacity>
+                                <View style={styles.missThresholdValue}>
+                                    <AccessibleText variant="body" color={colors.text.charcoal} style={styles.missThresholdText}>
+                                        {caregiver.missThreshold}
+                                    </AccessibleText>
+                                </View>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.missThresholdButton,
+                                        caregiver.missThreshold < 10 && styles.missThresholdButtonActive,
+                                    ]}
+                                    onPress={() => setCaregiver(prev => ({ ...prev, missThreshold: Math.min(10, prev.missThreshold + 1) }))}
+                                    disabled={caregiver.missThreshold >= 10}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name="add"
+                                        size={20}
+                                        color={caregiver.missThreshold < 10 ? colors.neutral.white : colors.neutral.gray400}
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <AccessibleButton
+                            title={isSaving ? 'Saving...' : 'Save Settings'}
+                            onPress={handleSaveCaregiver}
+                            variant="primary"
+                            size="small"
+                            disabled={isSaving}
+                            icon={<Ionicons name="save-outline" size={16} color={colors.neutral.white} />}
+                            style={styles.saveButton}
+                        />
                     </View>
-                </View>
-
-                {!permissionsGranted && (
-                    <AccessibleButton
-                        title="Request Permissions"
-                        onPress={handleRequestPermissions}
-                        variant="primary"
-                        size="small"
-                        icon={<Ionicons name="key" size={16} color={colors.neutral.white} />}
-                        iconPosition="left"
-                    />
                 )}
-
-                <AccessibleButton
-                    title="Send Test Notification"
-                    onPress={handleTestNotification}
-                    variant="secondary"
-                    size="small"
-                    disabled={!permissionsGranted}
-                    icon={<Ionicons name="notifications-outline" size={16} color={colors.primary.purple} />}
-                    iconPosition="left"
-                />
-
-                <AccessibleButton
-                    title="View Scheduled Reminders"
-                    onPress={handleViewScheduled}
-                    variant="ghost"
-                    size="small"
-                    icon={<Ionicons name="list" size={16} color={colors.primary.purple} />}
-                    iconPosition="left"
-                />
             </Card>
 
-            {/* App Info Section */}
-            <Card style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <Ionicons name="information-circle" size={24} color={colors.primary.purple} />
-                    <AccessibleText variant="h3" style={styles.sectionTitle}>
-                        App Information
-                    </AccessibleText>
-                </View>
-
-                <View style={styles.infoRow}>
-                    <AccessibleText variant="body" color={colors.neutral.gray700}>
-                        Version
-                    </AccessibleText>
-                    <AccessibleText variant="body" style={styles.infoValue}>
-                        1.0.0
-                    </AccessibleText>
-                </View>
-
-                <View style={styles.infoRow}>
-                    <AccessibleText variant="body" color={colors.neutral.gray700}>
-                        Build
-                    </AccessibleText>
-                    <AccessibleText variant="body" style={styles.infoValue}>
-                        Phase 4 - Modern UI
-                    </AccessibleText>
-                </View>
-            </Card>
-
-            {/* Developer Tools Section */}
-            <Card style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <Ionicons name="code-slash" size={24} color={colors.primary.orange} />
-                    <AccessibleText variant="h3" style={styles.sectionTitle}>
-                        Developer Tools
-                    </AccessibleText>
-                </View>
-
-                <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.devNote}>
-                    These tools are for testing and development purposes only.
-                </AccessibleText>
-
-                <AccessibleButton
-                    title="Seed Database (Test Data)"
-                    onPress={handleSeed}
-                    variant="outline"
-                    size="small"
-                    icon={<Ionicons name="barcode-outline" size={16} color={colors.primary.orange} />}
-                    iconPosition="left"
-                />
-            </Card>
-
-            {/* About Section */}
-            <Card style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <Ionicons name="heart" size={24} color={colors.primary.pink} />
-                    <AccessibleText variant="h3" style={styles.sectionTitle}>
-                        About
-                    </AccessibleText>
-                </View>
-
-                <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.aboutText}>
-                    SehatYaad helps you manage your medications and stay on track with your health routine.
-                </AccessibleText>
-
-                <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.copyright}>
-                    © 2025 SehatYaad. All rights reserved.
-                </AccessibleText>
-            </Card>
         </ScrollView>
     );
 }
@@ -437,7 +512,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.neutral.gray100,
+        backgroundColor: colors.background.cream,
     },
     content: {
         paddingBottom: spacing.xxl,
@@ -451,6 +526,9 @@ const styles = StyleSheet.create({
         marginTop: spacing.m,
         marginBottom: spacing.s,
     },
+    headerSubtitle: {
+        opacity: 0.9,
+    },
     section: {
         marginHorizontal: spacing.m,
         marginBottom: spacing.m,
@@ -458,44 +536,173 @@ const styles = StyleSheet.create({
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: spacing.m,
     },
-    sectionTitle: {
-        marginLeft: spacing.s,
+    sectionHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
         flex: 1,
     },
-    statusRow: {
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: layout.borderRadius.small,
+        backgroundColor: colors.neutral.gray100,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.m,
+    },
+    sectionTitle: {
+        flex: 1,
+    },
+    sectionDescription: {
+        marginBottom: spacing.m,
+        lineHeight: 20,
+    },
+    languageRow: {
+        flexDirection: 'row',
+        gap: spacing.m,
+    },
+    languageOption: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: spacing.m,
+        borderRadius: layout.borderRadius.medium,
+        backgroundColor: colors.neutral.gray100,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    languageOptionActive: {
+        backgroundColor: colors.primary.forestGreen,
+        borderColor: colors.primary.forestGreen,
+    },
+    languageText: {
+        fontWeight: '600',
+    },
+    voiceSettingsContent: {
+        paddingTop: spacing.s,
+    },
+    voiceSettingRow: {
+        marginBottom: spacing.l,
+    },
+    voiceSettingLabel: {
+        fontWeight: '600',
+        marginBottom: spacing.s,
+    },
+    optionRow: {
+        flexDirection: 'row',
+        gap: spacing.s,
+    },
+    optionButton: {
+        flex: 1,
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.s,
+        borderRadius: layout.borderRadius.small,
+        backgroundColor: colors.neutral.gray100,
+        borderWidth: 2,
+        borderColor: 'transparent',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    optionButtonActive: {
+        backgroundColor: colors.primary.forestGreen,
+        borderColor: colors.primary.forestGreen,
+    },
+    optionButtonText: {
+        fontWeight: '600',
+    },
+    testButton: {
+        marginTop: spacing.s,
+    },
+    switchRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        paddingVertical: spacing.m,
+    },
+    switchRowWithBorder: {
+        borderTopWidth: 1,
+        borderTopColor: colors.neutral.gray200,
+        paddingTop: spacing.m,
+        marginTop: spacing.s,
+    },
+    switchRowContent: {
+        flex: 1,
+        marginRight: spacing.m,
+    },
+    switchLabel: {
+        fontWeight: '600',
+        marginBottom: spacing.xs,
+    },
+    switchDescription: {
+        lineHeight: 20,
+    },
+    caregiverForm: {
+        marginTop: spacing.s,
+    },
+    missThresholdRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.m,
-        paddingVertical: spacing.s,
+        marginTop: spacing.m,
+        paddingVertical: spacing.m,
+        paddingTop: spacing.l,
+        borderTopWidth: 1,
+        borderTopColor: colors.neutral.gray200,
     },
-    statusBadge: {
+    missThresholdLabel: {
+        flex: 1,
+    },
+    missThresholdLabelText: {
+        fontWeight: '600',
+        marginBottom: spacing.xs,
+    },
+    missThresholdControls: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.neutral.gray100,
-        paddingHorizontal: spacing.m,
-        paddingVertical: spacing.xs,
-        borderRadius: layout.borderRadius.full,
+        gap: spacing.m,
     },
-    statusText: {
-        marginLeft: spacing.xs,
-        fontWeight: '600',
+    missThresholdButton: {
+        width: 40,
+        height: 40,
+        borderRadius: layout.borderRadius.small,
+        backgroundColor: colors.primary.orange,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    missThresholdButtonActive: {
+        opacity: 1,
+    },
+    missThresholdValue: {
+        minWidth: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    missThresholdText: {
+        fontWeight: '700',
+        fontSize: 18,
+    },
+    saveButton: {
+        marginTop: spacing.m,
     },
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingVertical: spacing.m,
         borderBottomWidth: 1,
         borderBottomColor: colors.neutral.gray200,
     },
+    infoRowLast: {
+        borderBottomWidth: 0,
+        paddingBottom: 0,
+    },
     infoValue: {
         fontWeight: '600',
-    },
-    devNote: {
-        marginBottom: spacing.m,
-        fontStyle: 'italic',
+        color: colors.text.charcoal,
     },
     aboutText: {
         lineHeight: 24,
@@ -504,16 +711,5 @@ const styles = StyleSheet.create({
     copyright: {
         textAlign: 'center',
         marginTop: spacing.s,
-    },
-    settingRow: {
-        marginBottom: spacing.m,
-    },
-    slider: {
-        width: '100%',
-        height: 40,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        marginTop: spacing.m,
     },
 });
