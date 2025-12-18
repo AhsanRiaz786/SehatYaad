@@ -151,7 +151,7 @@ export default function HomeScreen() {
         style={styles.gradientHeader}
       >
         <View style={styles.headerContent}>
-          <View>
+          <View accessible accessibilityRole="header">
             <AccessibleText variant="caption" color={colors.neutral.white} style={{ opacity: 0.9 }}>
               {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
             </AccessibleText>
@@ -165,7 +165,8 @@ export default function HomeScreen() {
           <TouchableOpacity
             onPress={() => navigation.navigate('DoseHistory')}
             style={styles.historyButton}
-            accessibilityLabel="View dose history"
+            accessibilityLabel="View dose history for previous days"
+            accessibilityRole="button"
           >
             <Ionicons name="calendar-outline" size={28} color={colors.neutral.white} />
           </TouchableOpacity>
@@ -258,6 +259,7 @@ export default function HomeScreen() {
                 onPress={() => toggleBlock(block)}
                 accessibilityRole="button"
                 accessibilityLabel={`${blockInfo.name} time block, ${blockMeds.length} medications`}
+                accessibilityHint={isExpanded ? 'Collapse to hide medications in this time block' : 'Expand to show medications in this time block'}
               >
                 <LinearGradient
                   colors={blockInfo.gradient as [string, string]}

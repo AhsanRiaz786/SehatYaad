@@ -107,17 +107,21 @@ export default function DoseActionModal({
         icon,
         label,
         color,
-        onPress
+        onPress,
+        accessibilityLabel,
     }: {
         icon: string;
         label: string;
         color: string;
         onPress: () => void;
+        accessibilityLabel?: string;
     }) => (
         <TouchableOpacity
             style={[styles.actionButton, { borderColor: color }]}
             onPress={onPress}
             disabled={processing}
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabel || label}
         >
             <Ionicons name={icon as any} size={32} color={color} />
             <AccessibleText variant="body" style={[styles.actionLabel, { color }]}>
@@ -132,8 +136,14 @@ export default function DoseActionModal({
             transparent
             animationType="fade"
             onRequestClose={onClose}
+            accessibilityViewIsModal
         >
-            <View style={styles.overlay}>
+            <View
+                style={styles.overlay}
+                accessible
+                accessibilityRole="dialog"
+                accessibilityLabel={`${medication.name} dose options`}
+            >
                 <View style={styles.modalContainer}>
                     <LinearGradient
                         colors={colors.gradients.primary as [string, string, ...string[]]}
@@ -150,7 +160,12 @@ export default function DoseActionModal({
                                     {medication.dosage} • {scheduledTime}
                                 </AccessibleText>
                             </View>
-                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <TouchableOpacity
+                                onPress={onClose}
+                                style={styles.closeButton}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close dose actions"
+                            >
                                 <Ionicons name="close" size={28} color={colors.neutral.white} />
                             </TouchableOpacity>
                         </View>
@@ -167,24 +182,28 @@ export default function DoseActionModal({
                                 label="Take Now"
                                 color={colors.semantic.success}
                                 onPress={() => handleAction('taken')}
+                                accessibilityLabel={`Mark ${medication.name} dose at ${scheduledTime} as taken now`}
                             />
                             <ActionButton
                                 icon="calendar"
                                 label="Backdate"
                                 color={colors.primary.purple}
                                 onPress={handleBackdate}
+                                accessibilityLabel={`Mark ${medication.name} dose as taken earlier`}
                             />
                             <ActionButton
                                 icon="close-circle"
                                 label="Mark Missed"
                                 color={colors.semantic.error}
                                 onPress={() => handleAction('missed')}
+                                accessibilityLabel={`Mark ${medication.name} dose at ${scheduledTime} as missed`}
                             />
                             <ActionButton
                                 icon="remove-circle"
                                 label="Skip"
                                 color={colors.neutral.gray500}
                                 onPress={() => handleAction('skipped')}
+                                accessibilityLabel={`Skip ${medication.name} dose at ${scheduledTime}`}
                             />
                         </View>
 
