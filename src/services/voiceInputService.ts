@@ -47,7 +47,7 @@ export class VoiceInputService {
         try {
             const isAvailable = await Voice.isAvailable();
             console.log('🎤 Voice service available:', isAvailable);
-            return isAvailable;
+            return Boolean(isAvailable);
         } catch (error) {
             console.error('Availability check error:', error);
             return false;
@@ -100,9 +100,18 @@ export class VoiceInputService {
 
             // Set up error handler
             Voice.onSpeechError = (e) => {
-                const errorMsg = e.error?.message || e.error || 'Speech recognition error';
-                const errorCode = e.error?.code?.toString() || '';
-                const errorStr = errorMsg.toString().toLowerCase();
+                const errorObj = e.error;
+                let errorMsg: string = 'Speech recognition error';
+                let errorCode = '';
+                
+                if (typeof errorObj === 'string') {
+                    errorMsg = errorObj;
+                } else if (errorObj && typeof errorObj === 'object') {
+                    errorMsg = errorObj.message || String(errorObj) || 'Speech recognition error';
+                    errorCode = errorObj.code?.toString() || '';
+                }
+                
+                const errorStr = errorMsg.toLowerCase();
                 
                 console.error('🎤 Voice error:', errorMsg, e);
                 
@@ -157,7 +166,7 @@ export class VoiceInputService {
                 await Voice.stop();
                 console.log('🎤 Voice.stop() called');
                 // Give it a moment before canceling
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
                 await Voice.cancel();
                 console.log('🎤 Voice.cancel() called');
             }
