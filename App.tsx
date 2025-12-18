@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initDatabase } from './src/database/init';
+import { seedDemoData } from './src/database/seed';
 import AppNavigator from './src/navigation/AppNavigator';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +11,9 @@ import { TTSProvider } from './src/context/TTSContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { NotificationController } from './src/components/NotificationController';
 
+// Set to true to seed demo data on app start
+const ENABLE_DEMO_SEED = true;
+
 export default function App() {
   const [dbInitialized, setDbInitialized] = useState(false);
 
@@ -17,6 +21,17 @@ export default function App() {
     async function setup() {
       try {
         await initDatabase();
+        
+        // Seed demo data if enabled
+        if (ENABLE_DEMO_SEED) {
+          try {
+            await seedDemoData();
+            console.log('Demo data seeded successfully!');
+          } catch (seedError) {
+            console.warn('Demo seed error (non-critical):', seedError);
+          }
+        }
+        
         setDbInitialized(true);
       } catch (e) {
         // Error handled silently - database initialization will retry

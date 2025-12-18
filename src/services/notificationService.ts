@@ -300,6 +300,23 @@ export function setupNotificationListeners(
         // Extract time, handle both regular and snoozed notifications
         const notificationTime = (data.time as string) || new Date().toTimeString().slice(0, 5);
 
+        // Handle default tap action (user tapped notification body, not action buttons)
+        if (actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+            console.log(`User tapped notification for ${data.medicationName}`);
+            try {
+                const medicationName = data.medicationName as string;
+                // Dismiss the notification
+                await Notifications.dismissNotificationAsync(notificationId);
+                // Provide TTS feedback
+                if (medicationName) {
+                    tts.speak(`Time for ${medicationName}`, { rate: 1.0 });
+                }
+            } catch (error) {
+                console.error('Error handling default notification tap:', error);
+            }
+            return;
+        }
+
         // Handle action buttons
         if (actionIdentifier === 'take') {
             console.log(`User marked ${data.medicationName} as taken from notification`);

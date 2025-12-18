@@ -9,18 +9,23 @@ export const NotificationController: React.FC = () => {
     const cleanup = setupNotificationListeners(
       (notification) => {
         console.log('Notification received in foreground:', notification);
-        // Extract message to speak
-        const title = notification.request.content.title;
-        const body = notification.request.content.body;
+        // Extract medication name from notification data for TTS
+        const data = notification.request.content.data;
+        const medicationName = data?.medicationName as string;
         
-        if (body) {
-            speak(`Reminder: ${body}`);
-        } else if (title) {
-            speak(`Reminder: ${title}`);
+        if (medicationName) {
+            speak(`Time for ${medicationName}`);
+        } else {
+            // Fallback to title if medication name not available
+            const title = notification.request.content.title;
+            if (title) {
+                speak(`Time for ${title.replace('Time for ', '')}`);
+            }
         }
       },
       (response) => {
         console.log('User interacted with notification:', response);
+        // TTS feedback is handled in notificationService for action buttons and default tap
       }
     );
 
