@@ -127,6 +127,20 @@ export async function initDatabase() {
             ('adaptive_enabled', 'true'),
             ('prealerts_enabled', 'true');
         `
+      },
+      {
+        version: 5,
+        up: `
+          -- Caregiver settings initial data
+          INSERT OR IGNORE INTO user_settings (setting_key, setting_value)
+          VALUES
+            ('caregiver_name', ''),
+            ('caregiver_phone', ''),
+            ('caregiver_email', ''),
+            ('caregiver_relationship', ''),
+            ('caregiver_enabled', 'false'),
+            ('caregiver_miss_threshold', '3');
+        `
       }
     ];
 

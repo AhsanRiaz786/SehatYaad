@@ -9,6 +9,7 @@ import DoseActionModal from '../components/DoseActionModal';
 import SmartBadge from '../components/SmartBadge';
 import SmartHub from '../components/SmartHub';
 import { getMedications, Medication, logDose, getTodaysDoses } from '../database/helpers';
+import { getCaregiverInfo, callCaregiver } from '../services/caregiverService';
 import { colors, spacing, layout } from '../utils/theme';
 import { useNavigation } from '@react-navigation/native';
 import { groupMedicationsByTimeBlock, getTimeBlockInfo, TimeBlock, getScheduledTimeForToday, isDosePending, isDoseMissed, getTimeBlock } from '../utils/timeBlockUtils';
@@ -144,16 +145,16 @@ export default function HomeScreen() {
   // Prepare Smart Hub actions
   const smartHubActions = useMemo(() => {
     const actions = [];
-    
+
     // Primary action based on current time block
-    const timeBlockLabel = language === 'ur' 
-      ? (currentTimeBlock === 'morning' ? 'صبح کی دوائیں' : 
-         currentTimeBlock === 'noon' ? 'دوپہر کی دوائیں' :
-         currentTimeBlock === 'evening' ? 'شام کی دوائیں' : 'رات کی دوائیں')
+    const timeBlockLabel = language === 'ur'
+      ? (currentTimeBlock === 'morning' ? 'صبح کی دوائیں' :
+        currentTimeBlock === 'noon' ? 'دوپہر کی دوائیں' :
+          currentTimeBlock === 'evening' ? 'شام کی دوائیں' : 'رات کی دوائیں')
       : (currentTimeBlock === 'morning' ? 'Morning Meds' :
-         currentTimeBlock === 'noon' ? 'Noon Meds' :
-         currentTimeBlock === 'evening' ? 'Evening Meds' : 'Night Meds');
-    
+        currentTimeBlock === 'noon' ? 'Noon Meds' :
+          currentTimeBlock === 'evening' ? 'Evening Meds' : 'Night Meds');
+
     actions.push({
       id: 'time-block-meds',
       label: timeBlockLabel,
@@ -186,6 +187,23 @@ export default function HomeScreen() {
       onPress: handleAddMedication,
       priority: 3,
     });
+
+    // Call Caregiver action (Dynamic)
+    const setupCaregiverAction = async () => {
+      const caregiver = await getCaregiverInfo();
+      if (caregiver.enabled && caregiver.phone) {
+        actions.push({
+          id: 'call-caregiver',
+          label: `Call ${caregiver.name || 'Caregiver'}`,
+          labelUrdu: 'کیئر گیور کو کال کریں',
+          icon: 'call',
+          onPress: () => callCaregiver(caregiver.phone),
+          priority: 4,
+          color: colors.primary.orange,
+        });
+      }
+    };
+    setupCaregiverAction();
 
     return actions;
   }, [currentTimeBlock, language]);
@@ -319,7 +337,7 @@ export default function HomeScreen() {
               {language === 'ur' ? 'ابھی تک کوئی دوائی نہیں' : 'No Medications Yet'}
             </AccessibleText>
             <AccessibleText variant="body" color={colors.text.charcoalLight} style={styles.emptyText}>
-              {language === 'ur' 
+              {language === 'ur'
                 ? 'نیچے + بٹن پر ٹیپ کریں تاکہ اپنی پہلی دوائی شامل کریں'
                 : 'Tap the + button below to add your first medication'}
             </AccessibleText>

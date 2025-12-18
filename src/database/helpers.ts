@@ -152,6 +152,25 @@ export const updateDoseStatus = async (doseId: number, status: Dose['status'], a
     );
 };
 
+export const getConsecutiveMisses = async (medicationId: number): Promise<number> => {
+    const db = await getDB();
+    const doses = await db.getAllAsync<Dose>(
+        'SELECT status FROM doses WHERE medication_id = ? ORDER BY scheduled_time DESC LIMIT 10',
+        medicationId
+    );
+
+    let count = 0;
+    for (const dose of doses) {
+        if (dose.status === 'missed') {
+            count++;
+        } else if (dose.status === 'taken') {
+            break;
+        }
+        // snoozed/skipped don't break or count in this simple model
+    }
+    return count;
+};
+
 export const getDosesByDateRange = async (startDate: Date, endDate: Date): Promise<Dose[]> => {
     const db = await getDB();
     return await db.getAllAsync<Dose>(
@@ -255,4 +274,22 @@ export const savePrescriptionImage = async (imagePath: string, medicationsJson: 
         imagePath, jsonStr
     );
     return result.lastInsertRowId;
+};
+
+// Settings
+export const getSetting = async (key: string, defaultValue: string = ''): Promise<string> => {
+    const db = await getDB();
+    const result = await db.getFirstAsync<{ setting_value: string }>(
+        'SELECT setting_value FROM user_settings WHERE setting_key = ?',
+        key
+    );
+    return result ? result.setting_value : defaultValue;
+};
+
+export const updateSetting = async (key: string, value: string) => {
+    const db = await getDB();
+    await db.runAsync(
+        'INSERT OR REPLACE INTO user_settings (setting_key, setting_value) VALUES (?, ?)',
+        key, value
+    );
 };
