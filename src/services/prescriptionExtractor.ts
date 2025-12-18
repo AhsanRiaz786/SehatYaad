@@ -101,6 +101,74 @@ export async function extractPrescriptionData(
 }
 
 /**
+ * Extract medication data from natural language text using backend Gemini API
+ */
+export async function extractPrescriptionFromText(
+    text: string
+): Promise<PrescriptionData> {
+    try {
+        console.log('📝 Starting text extraction via backend...');
+        console.log('🔗 Backend URL:', BACKEND_URL);
+        console.log('📄 Input text:', text);
+
+        const response = await fetch(`${BACKEND_URL}/api/process-medication-text`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ text: text.trim() }),
+        });
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+            let errorMessage = 'Failed to process text';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || `Server error (${response.status})`;
+                console.error('❌ Backend error response:', errorData);
+            } catch (parseError) {
+                const responseText = await response.text().catch(() => 'Unknown error');
+                errorMessage = `Server error (${response.status}): ${responseText}`;
+                console.error('❌ Backend error (non-JSON):', responseText);
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Processing failed');
+        }
+
+        console.log('✅ Backend extracted medications:', result.data.medications?.length || 0);
+        console.log('📊 Extraction data:', JSON.stringify(result.data, null, 2));
+
+        if (!result.data.medications || result.data.medications.length === 0) {
+            console.warn('⚠️ No medications extracted from text');
+        }
+
+        return result.data;
+
+    } catch (error) {
+        console.error('❌ Text extraction error:', error);
+
+        if (error instanceof TypeError && error.message.includes('Network request failed')) {
+            throw new Error(
+                'Cannot connect to backend server. Make sure the backend is running at ' + BACKEND_URL
+            );
+        }
+
+        throw new Error(
+            error instanceof Error
+                ? error.message
+                : 'Failed to extract medication data. Please try again or enter details manually.'
+        );
+    }
+}
+
+/**
  * Validate extracted medication data
  */
 export function validateExtractedData(medication: ExtractedMedication): boolean {

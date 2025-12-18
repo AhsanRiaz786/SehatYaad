@@ -48,6 +48,10 @@
     <array>
       <string>remote-notification</string>
     </array>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>We need microphone access to use voice input for adding medications.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>We need speech recognition to understand your medication information.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
