@@ -6,7 +6,7 @@ import { colors } from '../utils/theme';
 import { useLanguage } from '../context/LanguageContext';
 
 interface IconProps {
-    name: keyof typeof LucideIcons;
+    name: keyof typeof LucideIcons | string;
     size?: number;
     color?: string;
     active?: boolean; // Filled for active, outlined for inactive
@@ -23,32 +23,32 @@ const iconMappings: Record<string, keyof typeof LucideIcons> = {
     'water': 'GlassWater',
     'water-glass': 'GlassWater',
     'glass': 'GlassWater',
-    
+
     // Morning - Fajr context (sunrise/prayer)
     'morning': 'Sunrise',
     'fajr': 'Sunrise',
     'sunrise': 'Sunrise',
-    
+
     // Evening - Maghrib context (sunset/prayer)
     'evening': 'Sunset',
     'maghrib': 'Sunset',
     'sunset': 'Sunset',
-    
+
     // Night
     'night': 'Moon',
     'moon': 'Moon',
-    
+
     // Noon
     'noon': 'Sun',
     'sun': 'Sun',
     'sunny': 'Sun',
-    
+
     // Caregiver - Family icon (multiple people, not single user)
     'caregiver': 'Users',
     'family': 'Users',
     'users': 'Users',
     'user': 'User', // Single user fallback
-    
+
     // Common actions
     'checkmark': 'CheckCircle',
     'check': 'CheckCircle',
@@ -88,11 +88,11 @@ export default function Icon({
     style,
 }: IconProps) {
     const { language } = useLanguage();
-    
+
     // Map icon name to Lucide icon name (case-insensitive)
     const normalizedName = name.toLowerCase();
     const iconName = iconMappings[normalizedName] || (name.charAt(0).toUpperCase() + name.slice(1)) as keyof typeof LucideIcons;
-    
+
     // Get the icon component - try mapped name first, then original name
     let IconComponent = LucideIcons[iconName] as React.ComponentType<{
         size?: number;
@@ -100,10 +100,10 @@ export default function Icon({
         strokeWidth?: number;
         fill?: string;
     }>;
-    
+
     // If not found, try the original name with proper casing
     if (!IconComponent) {
-        const pascalCaseName = name.split(/[-_]/).map(word => 
+        const pascalCaseName = name.split(/[-_]/).map(word =>
             word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
         ).join('') as keyof typeof LucideIcons;
         IconComponent = LucideIcons[pascalCaseName] as React.ComponentType<{
@@ -113,7 +113,7 @@ export default function Icon({
             fill?: string;
         }>;
     }
-    
+
     if (!IconComponent) {
         console.warn(`Icon "${name}" (mapped to "${iconName}") not found in Lucide`);
         // Return a placeholder
@@ -124,12 +124,12 @@ export default function Icon({
             fill?: string;
         }>;
     }
-    
+
     // Determine colors - high contrast
     const iconColor = color || '#1A1A1A';
     const fillColor = active ? iconColor : 'none';
     const strokeWidth = 2.5; // For elderly visibility
-    
+
     return (
         <View style={[styles.container, style]}>
             <IconComponent

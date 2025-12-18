@@ -1,24 +1,71 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Switch, TextInput } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useTTS } from '../context/TTSContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AccessibleButton from '../components/AccessibleButton';
 import AccessibleText from '../components/AccessibleText';
+import AccessibleInput from '../components/AccessibleInput';
 import Card from '../components/Card';
 import { seedDatabase } from '../database/seed';
 import { colors, spacing, layout } from '../utils/theme';
 import { testNotification, getAllScheduledNotifications, requestPermissions } from '../services/notificationService';
 import * as Notifications from 'expo-notifications';
+import { getCaregiverInfo, saveCaregiverInfo, testCaregiverAlert, CaregiverInfo } from '../services/caregiverService';
 
 export default function SettingsScreen() {
     const [permissionsGranted, setPermissionsGranted] = useState(false);
     const { enabled, setEnabled, rate, setRate, pitch, setPitch, volume, setVolume, speak } = useTTS();
 
+    // Caregiver Settings State
+    const [caregiver, setCaregiver] = useState<CaregiverInfo>({
+        name: '',
+        phone: '',
+        email: '',
+        relationship: '',
+        enabled: false,
+        missThreshold: 3
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
     useEffect(() => {
         checkPermissions();
+        loadCaregiverSettings();
     }, []);
+
+    const loadCaregiverSettings = async () => {
+        try {
+            const info = await getCaregiverInfo();
+            setCaregiver(info);
+        } catch (error) {
+            console.error('Error loading caregiver settings:', error);
+        }
+    };
+
+    const handleSaveCaregiver = async () => {
+        try {
+            setIsSaving(true);
+            await saveCaregiverInfo(caregiver);
+            Alert.alert('Success', 'Caregiver settings saved successfully');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to save caregiver settings');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleTestCaregiverAlert = async () => {
+        if (!caregiver.phone) {
+            Alert.alert('Error', 'Please provide a caregiver phone number first');
+            return;
+        }
+        try {
+            await testCaregiverAlert(caregiver);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to send test alert');
+        }
+    };
 
     const checkPermissions = async () => {
         const { status } = await Notifications.getPermissionsAsync();
@@ -162,6 +209,97 @@ export default function SettingsScreen() {
                         />
                     </>
                 )}
+            </Card>
+
+            {/* Caregiver Section */}
+            <Card style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <Ionicons name="people" size={24} color={colors.primary.orange} />
+                    <AccessibleText variant="h3" style={styles.sectionTitle}>
+                        Caregiver Setup
+                    </AccessibleText>
+                    <Switch
+                        value={caregiver.enabled}
+                        onValueChange={(val: boolean) => setCaregiver(prev => ({ ...prev, enabled: val }))}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        thumbColor={colors.neutral.white}
+                    />
+                </View>
+
+                <AccessibleText variant="caption" color={colors.neutral.gray600} style={{ marginBottom: spacing.m }}>
+                    Notifications will be sent to your caregiver if you miss doses consistently.
+                </AccessibleText>
+
+                <AccessibleInput
+                    label="Caregiver Name"
+                    value={caregiver.name}
+                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, name: val }))}
+                    placeholder="e.g. Ali Khan"
+                    icon={<Ionicons name="person-outline" size={20} color={colors.neutral.gray600} />}
+                />
+
+                <AccessibleInput
+                    label="Phone Number"
+                    value={caregiver.phone}
+                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, phone: val }))}
+                    placeholder="e.g. +923001234567"
+                    keyboardType="phone-pad"
+                    icon={<Ionicons name="call-outline" size={20} color={colors.neutral.gray600} />}
+                />
+
+                <AccessibleInput
+                    label="Email (Optional)"
+                    value={caregiver.email}
+                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, email: val }))}
+                    placeholder="e.g. caregiver@example.com"
+                    keyboardType="email-address"
+                    icon={<Ionicons name="mail-outline" size={20} color={colors.neutral.gray600} />}
+                />
+
+                <AccessibleInput
+                    label="Relationship"
+                    value={caregiver.relationship}
+                    onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, relationship: val }))}
+                    placeholder="e.g. Son, Daughter, Spouse"
+                    icon={<Ionicons name="heart-outline" size={20} color={colors.neutral.gray600} />}
+                />
+
+                <View style={[styles.settingRow, { marginTop: spacing.m }]}>
+                    <AccessibleText variant="body" color={colors.neutral.gray700}>
+                        Alert after {caregiver.missThreshold} missed doses
+                    </AccessibleText>
+                    <Slider
+                        style={styles.slider}
+                        minimumValue={1}
+                        maximumValue={10}
+                        step={1}
+                        value={caregiver.missThreshold}
+                        onSlidingComplete={(val: number) => setCaregiver(prev => ({ ...prev, missThreshold: val }))}
+                        minimumTrackTintColor={colors.primary.orange}
+                        maximumTrackTintColor={colors.neutral.gray300}
+                        thumbTintColor={colors.primary.orange}
+                    />
+                </View>
+
+                <View style={styles.buttonRow}>
+                    <AccessibleButton
+                        title="Test Alert"
+                        onPress={handleTestCaregiverAlert}
+                        variant="outline"
+                        size="small"
+                        icon={<Ionicons name="send-outline" size={16} color={colors.primary.orange} />}
+                        style={{ flex: 1, marginRight: spacing.s }}
+                    />
+                    <AccessibleButton
+                        title={isSaving ? "Saving..." : "Save Settings"}
+                        onPress={handleSaveCaregiver}
+                        variant="primary"
+                        size="small"
+                        disabled={isSaving}
+                        icon={<Ionicons name="save-outline" size={16} color={colors.neutral.white} />}
+                        style={{ flex: 1 }}
+                    />
+                </View>
             </Card>
 
             {/* Notifications Section */}
@@ -373,5 +511,9 @@ const styles = StyleSheet.create({
     slider: {
         width: '100%',
         height: 40,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        marginTop: spacing.m,
     },
 });

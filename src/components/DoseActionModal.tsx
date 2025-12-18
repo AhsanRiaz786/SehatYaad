@@ -4,11 +4,12 @@ import Icon from './Icon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AccessibleText from './AccessibleText';
 import { colors, spacing, layout } from '../utils/theme';
-import { Medication, logDose } from '../database/helpers';
+import { Medication, logDose, getConsecutiveMisses } from '../database/helpers';
 import { getScheduledTimeForToday } from '../utils/timeBlockUtils';
 import { useTTS } from '../context/TTSContext';
 import { playSuccessSound } from '../utils/sounds';
 import { useLanguage } from '../context/LanguageContext';
+import { getCaregiverInfo, checkAndNotifyCaregiver } from '../services/caregiverService';
 
 interface DoseActionModalProps {
     visible: boolean;
@@ -57,6 +58,10 @@ export default function DoseActionModal({
                 playSuccessSound();
             } else if (action === 'missed') {
                 speak(`Dose marked as missed`);
+                // Check caregiver escalation
+                const consecutiveMisses = await getConsecutiveMisses(medication.id);
+                const caregiverInfo = await getCaregiverInfo();
+                await checkAndNotifyCaregiver(consecutiveMisses, caregiverInfo);
             } else if (action === 'skipped') {
                 speak(`Dose skipped`);
             }
@@ -142,7 +147,7 @@ export default function DoseActionModal({
             <View
                 style={styles.overlay}
                 accessible
-                accessibilityRole="dialog"
+                accessibilityRole="none"
                 accessibilityLabel={`${medication.name} dose options`}
             >
                 <View style={styles.modalContainer}>
@@ -306,7 +311,6 @@ const styles = StyleSheet.create({
         backgroundColor: colors.background.white,
         padding: spacing.m,
         gap: spacing.s,
-        ...layout.border.default,
     },
     actionLabel: {
         fontWeight: '600',
