@@ -1,18 +1,21 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../components/Icon';
 import AccessibleText from '../components/AccessibleText';
 import MedicationCard from '../components/MedicationCard';
 import DailySummary from '../components/DailySummaryCard';
 import DoseActionModal from '../components/DoseActionModal';
+import SmartBadge from '../components/SmartBadge';
+import SmartHub from '../components/SmartHub';
 import { getMedications, Medication, logDose, getTodaysDoses } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
 import { useNavigation } from '@react-navigation/native';
-import { groupMedicationsByTimeBlock, getTimeBlockInfo, TimeBlock, getScheduledTimeForToday, isDosePending, isDoseMissed } from '../utils/timeBlockUtils';
+import { groupMedicationsByTimeBlock, getTimeBlockInfo, TimeBlock, getScheduledTimeForToday, isDosePending, isDoseMissed, getTimeBlock } from '../utils/timeBlockUtils';
 import { DoseStatus } from '../components/StatusBadge';
 import { getScheduleRecommendations, ScheduleRecommendation, applyScheduleRecommendation } from '../services/adaptiveReminderService';
+import { useLanguage } from '../context/LanguageContext';
+import { formatDate } from '../utils/formatting';
 
 interface MedicationWithStatus extends Medication {
   status: DoseStatus;
@@ -23,13 +26,13 @@ export default function HomeScreen() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [medicationsWithStatus, setMedicationsWithStatus] = useState<MedicationWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedBlocks, setExpandedBlocks] = useState<Set<TimeBlock>>(new Set(['morning', 'noon', 'evening', 'night']));
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState<MedicationWithStatus | null>(null);
   const [homeRecommendations, setHomeRecommendations] = useState<ScheduleRecommendation[]>([]);
   const [applyingRecId, setApplyingRecId] = useState<string | null>(null);
   const navigation = useNavigation<any>();
+  const { language, isRTL, t } = useLanguage();
 
   const fetchData = async () => {
     setLoading(true);
@@ -128,178 +131,170 @@ export default function HomeScreen() {
     }
   };
 
-  const toggleBlock = (block: TimeBlock) => {
-    const newExpanded = new Set(expandedBlocks);
-    if (newExpanded.has(block)) {
-      newExpanded.delete(block);
-    } else {
-      newExpanded.add(block);
-    }
-    setExpandedBlocks(newExpanded);
-  };
+  // Get current time block for Smart Hub
+  const currentTimeBlock = useMemo(() => {
+    const now = new Date();
+    const hours = now.getHours();
+    if (hours >= 6 && hours < 11) return 'morning';
+    if (hours >= 11 && hours < 15) return 'noon';
+    if (hours >= 15 && hours < 20) return 'evening';
+    return 'night';
+  }, []);
+
+  // Prepare Smart Hub actions
+  const smartHubActions = useMemo(() => {
+    const actions = [];
+    
+    // Primary action based on current time block
+    const timeBlockLabel = language === 'ur' 
+      ? (currentTimeBlock === 'morning' ? 'صبح کی دوائیں' : 
+         currentTimeBlock === 'noon' ? 'دوپہر کی دوائیں' :
+         currentTimeBlock === 'evening' ? 'شام کی دوائیں' : 'رات کی دوائیں')
+      : (currentTimeBlock === 'morning' ? 'Morning Meds' :
+         currentTimeBlock === 'noon' ? 'Noon Meds' :
+         currentTimeBlock === 'evening' ? 'Evening Meds' : 'Night Meds');
+    
+    actions.push({
+      id: 'time-block-meds',
+      label: timeBlockLabel,
+      labelUrdu: timeBlockLabel,
+      icon: getTimeBlockInfo(currentTimeBlock).icon,
+      onPress: () => {
+        // Scroll to relevant medications
+      },
+      priority: 10,
+    });
+
+    // Voice Input action
+    actions.push({
+      id: 'voice-input',
+      label: 'Voice Input',
+      labelUrdu: 'آواز ان پٹ',
+      icon: 'mic',
+      onPress: () => {
+        // Handle voice input
+      },
+      priority: 5,
+    });
+
+    // Add Medication action
+    actions.push({
+      id: 'add-medication',
+      label: 'Add Medication',
+      labelUrdu: 'دوائی شامل کریں',
+      icon: 'add',
+      onPress: handleAddMedication,
+      priority: 3,
+    });
+
+    return actions;
+  }, [currentTimeBlock, language]);
 
   const groupedMeds = groupMedicationsByTimeBlock(medicationsWithStatus);
   const timeBlocks: TimeBlock[] = ['morning', 'noon', 'evening', 'night'];
 
+  // Get weekday name
+  const weekdayName = useMemo(() => {
+    const date = new Date();
+    return date.toLocaleDateString(language === 'ur' ? 'ur-PK' : 'en-US', { weekday: 'long' });
+  }, [language]);
+
   return (
     <View style={styles.container}>
-      {/* Gradient Header */}
-      <LinearGradient
-        colors={colors.gradients.primary as [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.headerContent}>
-          <View accessible accessibilityRole="header">
-            <AccessibleText variant="caption" color={colors.neutral.white} style={{ opacity: 0.9 }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
-            </AccessibleText>
-            <AccessibleText variant="h1" color={colors.neutral.white} style={styles.headerTitle}>
-              Today's Meds
-            </AccessibleText>
-            <AccessibleText variant="body" color={colors.neutral.white} style={{ opacity: 0.8 }}>
-              {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </AccessibleText>
-          </View>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('DoseHistory')}
-            style={styles.historyButton}
-            accessibilityLabel="View dose history for previous days"
-            accessibilityRole="button"
-          >
-            <Ionicons name="calendar-outline" size={28} color={colors.neutral.white} />
-          </TouchableOpacity>
+      {/* Simple Header - No Gradient */}
+      <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <View style={styles.headerContent} accessible accessibilityRole="header">
+          <AccessibleText variant="caption" color={colors.text.charcoalLight}>
+            {weekdayName}
+          </AccessibleText>
+          <AccessibleText variant="h1" color={colors.text.charcoal} style={styles.headerTitle}>
+            {t('home.title')}
+          </AccessibleText>
+          <AccessibleText variant="body" color={colors.text.charcoalLight}>
+            {formatDate(new Date())}
+          </AccessibleText>
         </View>
-      </LinearGradient>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('DoseHistory')}
+          style={styles.historyButton}
+          accessibilityLabel={language === 'ur' ? 'پچھلے دنوں کی تاریخ دیکھیں' : 'View dose history for previous days'}
+          accessibilityRole="button"
+        >
+          <Icon name="calendar" size={24} color={colors.text.charcoal} />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={fetchData} colors={[colors.primary.purple]} />
+          <RefreshControl refreshing={loading} onRefresh={fetchData} colors={[colors.primary.forestGreen]} />
         }
       >
         {/* Daily Summary */}
         <DailySummary refreshKey={refreshKey} />
 
-        {/* Smart Reminder Suggestion Banner (shows first suggestion only) */}
+        {/* Smart Badge for Predictions */}
         {homeRecommendations.length > 0 && (
-          <View style={styles.smartBanner}>
-            <View style={styles.smartBannerHeader}>
-              <Ionicons name="bulb" size={22} color={colors.primary.orange} />
-              <AccessibleText variant="h3" style={styles.smartBannerTitle}>
-                Smart Reminder Suggestion
-              </AccessibleText>
-            </View>
-            {homeRecommendations.slice(0, 1).map((rec, index) => {
-              const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}-${index}`;
-              return (
-                <View key={key}>
-                  <AccessibleText variant="body" style={styles.smartBannerText}>
-                    For{' '}
-                    <AccessibleText variant="body" style={{ fontWeight: '700' }}>
-                      {rec.medication.name}
-                    </AccessibleText>
-                    , the{' '}
-                    <AccessibleText variant="body" style={{ fontWeight: '700' }}>
-                      {rec.currentTime}
-                    </AccessibleText>{' '}
-                    reminder often doesn’t work well.
-                  </AccessibleText>
-                  <AccessibleText variant="small" color={colors.neutral.gray700} style={styles.smartBannerText}>
-                    {rec.reason}
-                  </AccessibleText>
-                  <AccessibleText variant="body" style={styles.smartBannerText}>
-                    We can move it to{' '}
-                    <AccessibleText variant="body" style={{ fontWeight: '700' }}>
-                      {rec.recommendedTime}
-                    </AccessibleText>
-                    .
-                  </AccessibleText>
-                  <View style={styles.smartBannerActions}>
-                    <TouchableOpacity
-                      style={styles.smartApplyButton}
-                      disabled={loading || applyingRecId === key}
-                      onPress={() => handleApplyHomeRecommendation(rec)}
-                    >
-                      <AccessibleText variant="button" color={colors.neutral.white}>
-                        {applyingRecId === key ? 'Applying...' : 'Apply Change'}
-                      </AccessibleText>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => navigation.navigate('Insights')}
-                      style={styles.smartDetailsButton}
-                    >
-                      <AccessibleText variant="button" color={colors.primary.purple}>
-                        View Details
-                      </AccessibleText>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
+          <View style={styles.smartBadgeContainer}>
+            <SmartBadge
+              message={t('smartBadge.refillSuggested')}
+              explanation={homeRecommendations[0]?.reason}
+              variant="info"
+              onPress={() => navigation.navigate('Insights')}
+            />
           </View>
         )}
 
-        {/* Time Blocks */}
-        {timeBlocks.map(block => {
-          const blockInfo = getTimeBlockInfo(block);
-          const blockMeds = groupedMeds[block] || [];
-          const isExpanded = expandedBlocks.has(block);
-          const pendingCount = blockMeds.filter(m => m.status === 'pending').length;
+        {/* Bento-Style Grid Layout for Medications */}
+        <View style={styles.bentoGrid}>
+          {timeBlocks.map(block => {
+            const blockInfo = getTimeBlockInfo(block);
+            const blockMeds = groupedMeds[block] || [];
+            const pendingCount = blockMeds.filter(m => m.status === 'pending').length;
 
-          if (blockMeds.length === 0) return null;
+            if (blockMeds.length === 0) return null;
 
-          return (
-            <View key={block} style={styles.timeBlockContainer}>
-              {/* Block Header */}
-              <TouchableOpacity
-                style={styles.blockHeader}
-                onPress={() => toggleBlock(block)}
-                accessibilityRole="button"
-                accessibilityLabel={`${blockInfo.name} time block, ${blockMeds.length} medications`}
-                accessibilityHint={isExpanded ? 'Collapse to hide medications in this time block' : 'Expand to show medications in this time block'}
-              >
-                <LinearGradient
-                  colors={blockInfo.gradient as [string, string]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.blockHeaderGradient}
+            return (
+              <View key={block} style={styles.bentoCard}>
+                {/* Card Header */}
+                <View
+                  style={[
+                    styles.bentoCardHeader,
+                    {
+                      backgroundColor: blockInfo.color + '15', // 15% opacity
+                      borderColor: blockInfo.color,
+                      flexDirection: isRTL ? 'row-reverse' : 'row',
+                    },
+                  ]}
                 >
-                  <View style={styles.blockHeaderContent}>
-                    <View style={styles.blockHeaderLeft}>
-                      <Ionicons name={blockInfo.icon as any} size={24} color={colors.neutral.white} />
-                      <View style={styles.blockHeaderText}>
-                        <AccessibleText variant="h3" color={colors.neutral.white}>
-                          {blockInfo.name}
-                        </AccessibleText>
-                        <AccessibleText variant="small" color={colors.neutral.white} style={{ opacity: 0.9 }}>
-                          {blockInfo.timeRange}
-                        </AccessibleText>
-                      </View>
-                    </View>
-                    <View style={styles.blockHeaderRight}>
-                      {pendingCount > 0 && (
-                        <View style={styles.badge}>
-                          <AccessibleText variant="small" color={colors.neutral.white}>
-                            {pendingCount}
-                          </AccessibleText>
-                        </View>
-                      )}
-                      <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
-                        color={colors.neutral.white}
-                      />
-                    </View>
+                  <View style={isRTL ? styles.iconRight : styles.iconLeft}>
+                    <Icon
+                      name={blockInfo.icon as any}
+                      size={20}
+                      color={blockInfo.color}
+                      active={pendingCount > 0}
+                    />
                   </View>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <View style={styles.bentoCardHeaderText}>
+                    <AccessibleText variant="h3" color={colors.text.charcoal}>
+                      {t(`timeBlock.${block}`)}
+                    </AccessibleText>
+                    <AccessibleText variant="caption" color={colors.text.charcoalLight}>
+                      {blockInfo.timeRange}
+                    </AccessibleText>
+                  </View>
+                  {pendingCount > 0 && (
+                    <View style={[styles.badge, { backgroundColor: colors.semantic.warning }]}>
+                      <AccessibleText variant="small" color={colors.background.white}>
+                        {pendingCount}
+                      </AccessibleText>
+                    </View>
+                  )}
+                </View>
 
-              {/* Block Content */}
-              {isExpanded && (
-                <View style={styles.blockContent}>
+                {/* Medication Cards */}
+                <View style={styles.bentoCardContent}>
                   {blockMeds.map((med) => (
                     <MedicationCard
                       key={med.id}
@@ -311,61 +306,29 @@ export default function HomeScreen() {
                     />
                   ))}
                 </View>
-              )}
-            </View>
-          );
-        })}
+              </View>
+            );
+          })}
+        </View>
 
         {/* Empty State */}
         {medications.length === 0 && !loading && (
           <View style={styles.emptyState}>
-            <Ionicons name="medical-outline" size={64} color={colors.neutral.gray400} />
-            <AccessibleText variant="h3" color={colors.neutral.gray600} style={styles.emptyTitle}>
-              No Medications Yet
+            <Icon name="pill" size={64} color={colors.border.gray} />
+            <AccessibleText variant="h3" color={colors.text.charcoalLight} style={styles.emptyTitle}>
+              {language === 'ur' ? 'ابھی تک کوئی دوائی نہیں' : 'No Medications Yet'}
             </AccessibleText>
-            <AccessibleText variant="body" color={colors.neutral.gray500} style={styles.emptyText}>
-              Tap the + button below to add your first medication
+            <AccessibleText variant="body" color={colors.text.charcoalLight} style={styles.emptyText}>
+              {language === 'ur' 
+                ? 'نیچے + بٹن پر ٹیپ کریں تاکہ اپنی پہلی دوائی شامل کریں'
+                : 'Tap the + button below to add your first medication'}
             </AccessibleText>
           </View>
         )}
       </ScrollView>
 
-      {/* Floating Action Buttons */}
-      <View style={styles.fabContainer}>
-        {/* Scan Prescription FAB */}
-        <TouchableOpacity
-          style={[styles.fab, styles.fabSecondary]}
-          onPress={() => navigation.navigate('Camera')}
-          accessibilityLabel="Scan prescription"
-          accessibilityRole="button"
-        >
-          <LinearGradient
-            colors={['#10b981', '#059669'] as [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGradient}
-          >
-            <Ionicons name="camera" size={28} color={colors.neutral.white} />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Add Medication FAB */}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleAddMedication}
-          accessibilityLabel="Add medication"
-          accessibilityRole="button"
-        >
-          <LinearGradient
-            colors={colors.gradients.primary as [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGradient}
-          >
-            <Ionicons name="add" size={32} color={colors.neutral.white} />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      {/* Adaptive Smart Hub */}
+      <SmartHub actions={smartHubActions} currentTimeBlock={currentTimeBlock} />
 
       {/* Dose Action Modal */}
       {selectedMedication && selectedMedication.nextTime && (
@@ -387,17 +350,20 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.neutral.gray100,
+    backgroundColor: colors.background.cream,
   },
-  gradientHeader: {
+  header: {
     paddingTop: spacing.xl,
-    paddingBottom: spacing.l,
+    paddingBottom: spacing.m,
     paddingHorizontal: spacing.m,
+    backgroundColor: colors.background.white,
+    ...layout.border.default,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flex: 1,
   },
   headerTitle: {
     marginVertical: spacing.xs,
@@ -410,85 +376,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 100,
+    paddingBottom: 140, // Space for Smart Hub + safe area
   },
-  smartBanner: {
-    marginHorizontal: spacing.m,
-    marginBottom: spacing.m,
-    padding: spacing.m,
-    backgroundColor: colors.neutral.white,
-    borderRadius: layout.borderRadius.large,
-    ...layout.shadow.small,
-  },
-  smartBannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.s,
-    gap: spacing.s,
-  },
-  smartBannerTitle: {
-    fontWeight: '600',
-  },
-  smartBannerText: {
-    marginBottom: spacing.xs,
-  },
-  smartBannerActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.s,
-    marginTop: spacing.s,
-  },
-  smartApplyButton: {
-    backgroundColor: colors.primary.purple,
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderRadius: layout.borderRadius.medium,
-  },
-  smartDetailsButton: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-  },
-  timeBlockContainer: {
+  smartBadgeContainer: {
     marginHorizontal: spacing.m,
     marginBottom: spacing.m,
   },
-  blockHeader: {
-    borderRadius: layout.borderRadius.large,
-    overflow: 'hidden',
-    ...layout.shadow.medium,
-  },
-  blockHeaderGradient: {
-    padding: spacing.m,
-  },
-  blockHeaderContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  blockHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  bentoGrid: {
+    paddingHorizontal: spacing.m,
     gap: spacing.m,
+  },
+  bentoCard: {
+    backgroundColor: colors.background.white,
+    borderRadius: layout.borderRadius.medium,
+    ...layout.border.default,
+    overflow: 'hidden',
+  },
+  bentoCardHeader: {
+    padding: spacing.m,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  iconLeft: {
+    marginRight: spacing.s,
+  },
+  iconRight: {
+    marginLeft: spacing.s,
+  },
+  bentoCardHeaderText: {
     flex: 1,
   },
-  blockHeaderText: {
-    gap: spacing.xs,
-  },
-  blockHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.s,
-  },
   badge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 12,
     paddingHorizontal: spacing.s,
-    paddingVertical: 2,
+    paddingVertical: 4,
     minWidth: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  blockContent: {
-    paddingTop: spacing.m,
+  bentoCardContent: {
+    padding: spacing.m,
   },
   emptyState: {
     alignItems: 'center',
@@ -502,30 +430,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-  },
-  fabContainer: {
-    position: 'absolute',
-    bottom: spacing.l,
-    right: spacing.l,
-    flexDirection: 'column',
-    gap: spacing.m,
-  },
-  fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    ...layout.shadow.large,
-  },
-  fabSecondary: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  fabGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

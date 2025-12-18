@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import AccessibleText from './AccessibleText';
 import StatusBadge, { DoseStatus } from './StatusBadge';
+import Icon from './Icon';
 import { Medication } from '../database/helpers';
 import { colors, spacing, layout } from '../utils/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../context/LanguageContext';
 
 interface MedicationCardProps {
     medication: Medication;
@@ -22,10 +22,14 @@ export default function MedicationCard({
     nextDoseTime,
     onQuickMark
 }: MedicationCardProps) {
+    const { language, isRTL, t } = useLanguage();
+
     // Get next dose time display
     const getNextDoseTime = () => {
         if (nextDoseTime) return nextDoseTime;
-        if (!medication.times || medication.times.length === 0) return 'No schedule';
+        if (!medication.times || medication.times.length === 0) {
+            return language === 'ur' ? 'کوئی شیڈول نہیں' : 'No schedule';
+        }
         const now = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes();
 
@@ -39,8 +43,6 @@ export default function MedicationCard({
         return medication.times[0]; // Next day's first dose
     };
 
-    const medicationColor = medication.color || colors.primary.purple;
-
     // Get border color based on status
     const getBorderColor = () => {
         switch (status) {
@@ -49,91 +51,139 @@ export default function MedicationCard({
             case 'missed':
                 return colors.semantic.error;
             case 'snoozed':
-                return '#FF9500';
+                return colors.semantic.warning;
             default:
-                return 'transparent';
+                return colors.border.gray;
         }
     };
 
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.9}
-            style={styles.container}
-            accessibilityRole="button"
-            accessibilityLabel={`${medication.name}, ${medication.dosage}, ${status}, Tap for details`}
-        >
-            <View style={[
-                styles.card,
-                { borderColor: getBorderColor(), borderWidth: getBorderColor() !== 'transparent' ? 2 : 0 }
-            ]}>
-                {/* Color indicator / Pill icon */}
-                <LinearGradient
-                    colors={[medicationColor, medicationColor]}
-                    style={styles.iconContainer}
-                >
-                    <Ionicons name="medical" size={24} color={colors.neutral.white} />
-                </LinearGradient>
+    // Skeuomorphic pill blister pack icon
+    const getPillIcon = () => {
+        // Using a more realistic pill icon representation
+        return 'medical';
+    };
 
-                {/* Content */}
-                <View style={styles.content}>
-                    <View style={styles.headerRow}>
-                        <AccessibleText variant="h3" numberOfLines={1} style={styles.name}>
-                            {medication.name}
-                        </AccessibleText>
-                        <StatusBadge status={status} compact />
+    return (
+        <View style={styles.container}>
+            <TouchableOpacity
+                onPress={onPress}
+                activeOpacity={0.9}
+                style={[
+                    styles.card,
+                    {
+                        borderColor: getBorderColor(),
+                    },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`${medication.name}, ${medication.dosage}, ${status}, Tap for details`}
+            >
+                {/* Main content row */}
+                <View
+                    style={[
+                        styles.cardRow,
+                        {
+                            flexDirection: isRTL ? 'row-reverse' : 'row',
+                        },
+                    ]}
+                >
+                    {/* Skeuomorphic pill icon */}
+                    <View style={styles.iconContainer}>
+                        <Icon
+                            name="pill"
+                            size={28}
+                            color={colors.primary.forestGreen}
+                            active={status === 'taken'}
+                        />
                     </View>
 
-                    <AccessibleText
-                        variant="body"
-                        color={colors.neutral.gray600}
-                        style={styles.dosage}
-                    >
-                        {medication.dosage} • {medication.frequency}
-                    </AccessibleText>
-
-                    <View style={styles.timeRow}>
-                        <Ionicons
-                            name="time-outline"
-                            size={16}
-                            color={colors.primary.purple}
-                        />
+                    {/* Content - Max 3 pieces of info: Name, Time, Dosage */}
+                    <View style={styles.content}>
+                        {/* 1. Name */}
                         <AccessibleText
-                            variant="caption"
-                            color={colors.primary.purple}
-                            style={styles.timeText}
+                            variant="h3"
+                            numberOfLines={1}
+                            color={colors.text.charcoal}
+                            style={styles.name}
                         >
-                            Next: {getNextDoseTime()}
+                            {medication.name}
                         </AccessibleText>
+
+                        {/* 2. Time */}
+                        <View
+                            style={[
+                                styles.infoRow,
+                                {
+                                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                                },
+                            ]}
+                        >
+                            <View style={isRTL ? styles.iconRight : styles.iconLeft}>
+                                <Icon
+                                    name="time"
+                                    size={16}
+                                    color={colors.text.charcoalLight}
+                                />
+                            </View>
+                            <AccessibleText
+                                variant="body"
+                                color={colors.text.charcoalLight}
+                                style={styles.timeText}
+                            >
+                                {getNextDoseTime()}
+                            </AccessibleText>
+                        </View>
+
+                        {/* 3. Dosage */}
+                        <AccessibleText
+                            variant="body"
+                            color={colors.text.charcoalLight}
+                            style={styles.dosage}
+                        >
+                            {medication.dosage}
+                        </AccessibleText>
+                    </View>
+
+                    {/* Status Badge */}
+                    <View style={styles.statusContainer}>
+                        <StatusBadge status={status} compact />
                     </View>
                 </View>
 
-                {/* Quick action or chevron */}
-                {onQuickMark && status === 'pending' ? (
+                {/* Quick action button - Full width, 56px height - Outside the row */}
+                {onQuickMark && status === 'pending' && (
                     <TouchableOpacity
                         onPress={(e) => {
                             e.stopPropagation();
                             onQuickMark();
                         }}
-                        style={styles.quickActionButton}
-                        accessibilityLabel="Mark as taken"
+                        style={[
+                            styles.quickActionButton,
+                            {
+                                backgroundColor: colors.primary.forestGreen,
+                                flexDirection: isRTL ? 'row-reverse' : 'row',
+                            },
+                        ]}
+                        accessibilityLabel={t('medication.markAsTaken')}
                         accessibilityRole="button"
                     >
-                        <Ionicons
-                            name="checkmark-circle"
-                            size={32}
-                            color={colors.semantic.success}
-                        />
+                        <View style={isRTL ? styles.iconRight : styles.iconLeft}>
+                            <Icon
+                                name="checkmark"
+                                size={20}
+                                color={colors.background.white}
+                                active={true}
+                            />
+                        </View>
+                        <AccessibleText
+                            variant="button"
+                            color={colors.background.white}
+                        >
+                            {t('medication.markAsTaken')}
+                        </AccessibleText>
                     </TouchableOpacity>
-                ) : (
-                    <Ionicons
-                        name="chevron-forward"
-                        size={20}
-                        color={colors.neutral.gray400}
-                    />
                 )}
-            </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -142,48 +192,60 @@ const styles = StyleSheet.create({
         marginBottom: spacing.m,
     },
     card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.neutral.white,
-        borderRadius: layout.borderRadius.large,
+        backgroundColor: colors.background.white,
+        borderRadius: layout.borderRadius.medium,
         padding: spacing.m,
-        ...layout.shadow.medium,
+        ...layout.border.default,
+        borderWidth: 1,
+    },
+    cardRow: {
+        alignItems: 'flex-start',
     },
     iconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 48,
+        height: 48,
+        borderRadius: layout.borderRadius.small,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: colors.background.cream,
         marginRight: spacing.m,
+    },
+    iconLeft: {
+        marginRight: spacing.xs,
+    },
+    iconRight: {
+        marginLeft: spacing.xs,
     },
     content: {
         flex: 1,
+        minWidth: 0, // Allow text to wrap properly
     },
-    headerRow: {
+    name: {
+        marginBottom: spacing.xs,
+        fontWeight: '600',
+    },
+    infoRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: spacing.xs,
     },
-    name: {
-        flex: 1,
-        marginRight: spacing.s,
+    timeText: {
+        fontWeight: '500',
     },
     dosage: {
         marginTop: spacing.xs,
     },
-    timeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: spacing.s,
-    },
-    timeText: {
-        marginLeft: spacing.xs,
-        fontWeight: '500',
+    statusContainer: {
+        marginLeft: spacing.s,
+        alignSelf: 'flex-start',
     },
     quickActionButton: {
-        padding: spacing.xs,
-        marginLeft: spacing.s,
+        width: '100%',
+        height: layout.touchableHeight,
+        borderRadius: layout.borderRadius.medium,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: spacing.m,
+        paddingHorizontal: spacing.m,
     },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import AccessibleText from './AccessibleText';
 import { colors, spacing } from '../utils/theme';
 
@@ -17,7 +17,7 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
         switch (status) {
             case 'taken':
                 return {
-                    icon: 'checkmark-circle' as const,
+                    icon: 'checkmark' as const,
                     color: colors.semantic.success,
                     bgColor: colors.semantic.success + '20',
                     label: 'Taken',
@@ -25,27 +25,27 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
             case 'pending':
                 return {
                     icon: 'time' as const,
-                    color: colors.primary.orange,
-                    bgColor: colors.primary.orange + '20',
+                    color: colors.semantic.warning,
+                    bgColor: colors.semantic.warning + '20',
                     label: 'Pending',
                 };
             case 'missed':
                 return {
-                    icon: 'close-circle' as const,
+                    icon: 'close' as const,
                     color: colors.semantic.error,
                     bgColor: colors.semantic.error + '20',
                     label: 'Missed',
                 };
             case 'snoozed':
                 return {
-                    icon: 'alarm' as const,
+                    icon: 'clock' as const,
                     color: '#FF9500',
                     bgColor: '#FF950020',
                     label: 'Snoozed',
                 };
             case 'skipped':
                 return {
-                    icon: 'remove-circle' as const,
+                    icon: 'x' as const,
                     color: colors.neutral.gray600,
                     bgColor: colors.neutral.gray300,
                     label: 'Skipped',
@@ -58,14 +58,24 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
     if (compact) {
         return (
             <View style={[styles.compactBadge, { backgroundColor: config.bgColor }]}>
-                <Ionicons name={config.icon} size={16} color={config.color} />
+                <Icon 
+                    name={config.icon} 
+                    size={16} 
+                    color={config.color}
+                    active={status === 'taken'}
+                />
             </View>
         );
     }
 
     return (
         <View style={[styles.badge, { backgroundColor: config.bgColor }]}>
-            <Ionicons name={config.icon} size={18} color={config.color} />
+            <Icon 
+                name={config.icon} 
+                size={18} 
+                color={config.color}
+                active={status === 'taken'}
+            />
             <View style={styles.textContainer}>
                 <AccessibleText
                     variant="caption"

@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../components/Icon';
 import { colors, typography } from '../utils/theme';
 
 import {
@@ -26,21 +26,21 @@ function MainTabs() {
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 tabBarIcon: ({ focused, color, size }) => {
-                    let iconName: keyof typeof Ionicons.glyphMap;
+                    let iconName: string;
 
                     if (route.name === 'Home') {
-                        iconName = focused ? 'home' : 'home-outline';
+                        iconName = 'home';
                     } else if (route.name === 'Insights') {
-                        iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+                        iconName = 'insights';
                     } else if (route.name === 'Settings') {
-                        iconName = focused ? 'settings' : 'settings-outline';
+                        iconName = 'settings';
                     } else {
                         iconName = 'help-circle';
                     }
 
-                    return <Ionicons name={iconName} size={size} color={color} />;
+                    return <Icon name={iconName} size={size} color={color} active={focused} />;
                 },
-                tabBarActiveTintColor: colors.primary.purple,
+                tabBarActiveTintColor: colors.primary.forestGreen,
                 tabBarInactiveTintColor: colors.neutral.gray500,
                 tabBarStyle: {
                     borderTopWidth: 1,
@@ -88,7 +88,7 @@ export default function AppNavigator() {
                     component={MedicationDetailScreen}
                     options={{
                         headerTitle: 'Medication Details',
-                        headerTintColor: colors.primary.purple,
+                        headerTintColor: colors.primary.forestGreen,
                     }}
                 />
                 <Stack.Screen
@@ -96,7 +96,7 @@ export default function AppNavigator() {
                     component={DoseHistoryScreen}
                     options={{
                         headerTitle: 'Dose History',
-                        headerTintColor: colors.primary.purple,
+                        headerTintColor: colors.primary.forestGreen,
                         headerShown: false,
                     }}
                 />

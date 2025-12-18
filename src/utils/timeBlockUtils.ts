@@ -3,7 +3,7 @@ export type TimeBlock = 'morning' | 'noon' | 'evening' | 'night';
 export interface TimeBlockInfo {
     name: string;
     timeRange: string;
-    icon: string;
+    icon: string; // Lucide icon name
     gradient: string[];
     color: string;
     label: string;
@@ -28,6 +28,7 @@ export function getTimeBlock(time: string): TimeBlock {
 
 /**
  * Get display information for a time block
+ * Uses cultural icons: Tasbih for evening/night, Crescent for night
  */
 export function getTimeBlockInfo(block: TimeBlock): TimeBlockInfo {
     switch (block) {
@@ -36,36 +37,36 @@ export function getTimeBlockInfo(block: TimeBlock): TimeBlockInfo {
                 name: 'Morning',
                 label: 'Morning',
                 timeRange: '6 AM - 11 AM',
-                icon: 'sunny',
-                color: '#FFB800',
-                gradient: ['#FFD93D', '#FF9A3D']
+                icon: 'sunrise', // Fajr context - sunrise icon
+                color: '#F59E0B',
+                gradient: [] // No gradients - use solid colors
             };
         case 'noon':
             return {
                 name: 'Noon',
                 label: 'Noon',
                 timeRange: '11 AM - 3 PM',
-                icon: 'partly-sunny',
-                color: '#FF9A3D',
-                gradient: ['#FF9A3D', '#FF6B3D']
+                icon: 'sun', // Sun icon for noon
+                color: '#F97316',
+                gradient: []
             };
         case 'evening':
             return {
                 name: 'Evening',
                 label: 'Evening',
                 timeRange: '3 PM - 8 PM',
-                icon: 'sunset',
-                color: '#FF6B3D',
-                gradient: ['#FF6B3D', '#9D50BB']
+                icon: 'sunset', // Maghrib context - sunset icon
+                color: '#7C3AED',
+                gradient: []
             };
         case 'night':
             return {
                 name: 'Night',
                 label: 'Night',
                 timeRange: '8 PM - 6 AM',
-                icon: 'moon',
-                color: '#667eea',
-                gradient: ['#667eea', '#764ba2']
+                icon: 'moon', // Crescent moon icon
+                color: '#1E40AF',
+                gradient: []
             };
     }
 }

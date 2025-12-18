@@ -5,6 +5,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { Text, View } from 'react-native';
 
 import { TTSProvider } from './src/context/TTSContext';
+import { LanguageProvider } from './src/context/LanguageContext';
 import { NotificationController } from './src/components/NotificationController';
 
 export default function App() {
@@ -34,10 +35,12 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <TTSProvider>
-        <NotificationController />
-        <AppNavigator />
-      </TTSProvider>
+      <LanguageProvider>
+        <TTSProvider>
+          <NotificationController />
+          <AppNavigator />
+        </TTSProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

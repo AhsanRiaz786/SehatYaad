@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TextProps, StyleSheet } from 'react-native';
 import { colors, typography } from '../utils/theme';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AccessibleTextProps extends TextProps {
     variant?: 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'bodyLarge' | 'caption' | 'small' | 'button';
@@ -10,16 +11,32 @@ interface AccessibleTextProps extends TextProps {
 export default function AccessibleText({
     style,
     variant = 'body',
-    color = colors.text,
+    color = colors.text.charcoal,
     children,
     ...props
 }: AccessibleTextProps) {
+    const { language, isRTL } = useLanguage();
+    
+    // Determine font family based on language and variant
+    const getFontFamily = () => {
+        if (variant === 'display' || variant === 'h1' || variant === 'h2' || variant === 'h3') {
+            // Headers use Noto Nastaliq Urdu for Urdu, Inter for English
+            return language === 'ur' ? 'NotoNastaliqUrdu' : 'Inter';
+        }
+        // Body text uses Naskh-style for Urdu (System font), Inter for English
+        return language === 'ur' ? 'System' : 'Inter';
+    };
+
     return (
         <Text
             style={[
                 styles.text,
                 typography[variant] as any,
-                { color },
+                {
+                    color,
+                    fontFamily: getFontFamily(),
+                    writingDirection: isRTL ? 'rtl' : 'ltr',
+                },
                 style
             ]}
             {...props}
@@ -31,6 +48,6 @@ export default function AccessibleText({
 
 const styles = StyleSheet.create({
     text: {
-        fontFamily: 'System', // Use system font for now
+        // Font family will be set dynamically
     },
 });
