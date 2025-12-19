@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AccessibleText from '../components/AccessibleText';
+import Icon from '../components/Icon';
 import StatCard from '../components/analytics/StatCard';
 import AdherenceLineChart from '../components/analytics/AdherenceLineChart';
 import MedicationBarChart from '../components/analytics/MedicationBarChart';
@@ -108,310 +107,320 @@ export default function InsightsScreen() {
             style={styles.container}
             contentContainerStyle={styles.content}
             refreshControl={
-                <RefreshControl refreshing={loading} onRefresh={loadAnalytics} colors={[colors.primary.purple]} />
+                <RefreshControl refreshing={loading} onRefresh={loadAnalytics} colors={[colors.primary.main]} />
             }
         >
-            {/* Header */}
-            <LinearGradient
-                colors={colors.gradients.primary as [string, string, ...string[]]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <Ionicons name="bar-chart" size={48} color={colors.neutral.white} />
-                <AccessibleText variant="h1" color={colors.neutral.white} style={styles.headerTitle}>
-                    Health Insights
-                </AccessibleText>
-                <AccessibleText variant="body" color={colors.neutral.white} style={{ opacity: 0.9 }}>
-                    Track your progress
-                </AccessibleText>
-            </LinearGradient>
-
-            {/* Time Range Selector */}
-            <View style={styles.rangeSelector}>
-                <TouchableOpacity
-                    style={[styles.rangeButton, timeRange === 7 && styles.rangeButtonActive]}
-                    onPress={() => setTimeRange(7)}
-                >
-                    <AccessibleText
-                        variant="button"
-                        color={timeRange === 7 ? colors.neutral.white : colors.primary.purple}
-                    >
-                        7 Days
-                    </AccessibleText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.rangeButton, timeRange === 30 && styles.rangeButtonActive]}
-                    onPress={() => setTimeRange(30)}
-                >
-                    <AccessibleText
-                        variant="button"
-                        color={timeRange === 30 ? colors.neutral.white : colors.primary.purple}
-                    >
-                        30 Days
-                    </AccessibleText>
-                </TouchableOpacity>
-            </View>
-
-            {/* Stats Cards */}
-            {stats && (
-                <View style={styles.statsContainer}>
-                    <StatCard
-                        icon="analytics"
-                        label="Overall Adherence"
-                        value={`${stats.overall}%`}
-                        trend={stats.trend}
-                        trendValue={getTrendText(stats.trend)}
-                        gradient={['#9D50BB', '#6E3CBC'] as [string, string]}
-                    />
-                    <StatCard
-                        icon="calendar"
-                        label="Last 7 Days"
-                        value={`${stats.weeklyAverage}%`}
-                        gradient={['#3b82f6', '#1d4ed8'] as [string, string]}
-                    />
-                    <StatCard
-                        icon="flame"
-                        label="Current Streak"
-                        value={`${stats.streakDays} days`}
-                        gradient={['#f59e0b', '#d97706'] as [string, string]}
-                    />
-                    <StatCard
-                        icon="trophy"
-                        label="Longest Streak"
-                        value={`${stats.longestStreak} days`}
-                        gradient={['#10b981', '#059669'] as [string, string]}
-                    />
-                    <StatCard
-                        icon="alert-circle"
-                        label="Missed Doses"
-                        value={stats.missedDoses}
-                        gradient={['#ef4444', '#b91c1c'] as [string, string]}
-                    />
+                {/* Clean Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerTextContainer}>
+                        <AccessibleText variant="h1" color={colors.primary.dark} style={styles.headerTitle}>
+                            Health Insights
+                        </AccessibleText>
+                        <AccessibleText variant="body" color={colors.text.secondary}>
+                            Track your progress
+                        </AccessibleText>
+                    </View>
+                    <View style={[styles.headerIcon, { backgroundColor: colors.primary.main + '15' }]}>
+                        <Icon name="bar-chart-2" size={28} color={colors.primary.main} />
+                    </View>
                 </View>
-            )}
 
-            {/* Best / Worst Day Summary */}
-            {stats && (stats.bestDay || stats.worstDay) && (
-                <View style={styles.summaryContainer}>
-                    {stats.bestDay && (
-                        <View style={styles.summaryItem}>
-                            <AccessibleText variant="caption" color={colors.neutral.gray600}>
-                                Best Day
-                            </AccessibleText>
-                            <AccessibleText variant="body" style={styles.summaryValue}>
-                                {stats.bestDay.percentage}% on {stats.bestDay.date}
-                            </AccessibleText>
-                        </View>
-                    )}
-                    {stats.worstDay && (
-                        <View style={styles.summaryItem}>
-                            <AccessibleText variant="caption" color={colors.neutral.gray600}>
-                                Toughest Day
-                            </AccessibleText>
-                            <AccessibleText variant="body" style={styles.summaryValue}>
-                                {stats.worstDay.percentage}% on {stats.worstDay.date}
-                            </AccessibleText>
-                        </View>
-                    )}
+                {/* Time Range Selector */}
+                <View style={styles.rangeSelector}>
+                    <TouchableOpacity
+                        style={[styles.rangeButton, timeRange === 7 && styles.rangeButtonActive]}
+                        onPress={() => setTimeRange(7)}
+                    >
+                        <AccessibleText
+                            variant="button"
+                            color={timeRange === 7 ? colors.neutral.white : colors.primary.main}
+                        >
+                            7 Days
+                        </AccessibleText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.rangeButton, timeRange === 30 && styles.rangeButtonActive]}
+                        onPress={() => setTimeRange(30)}
+                    >
+                        <AccessibleText
+                            variant="button"
+                            color={timeRange === 30 ? colors.neutral.white : colors.primary.main}
+                        >
+                            30 Days
+                        </AccessibleText>
+                    </TouchableOpacity>
                 </View>
-            )}
 
-            {/* Adherence Timeline Chart */}
-            <AdherenceLineChart data={dailyData} days={timeRange} />
+                {/* Stats Cards */}
+                {stats && (
+                    <View style={styles.statsContainer}>
+                        <StatCard
+                            icon="activity"
+                            label="Overall Adherence"
+                            value={`${stats.overall}%`}
+                            trend={stats.trend}
+                            trendValue={getTrendText(stats.trend)}
+                            color={colors.primary.purple}
+                        />
+                        <StatCard
+                            icon="calendar"
+                            label="Last 7 Days"
+                            value={`${stats.weeklyAverage}%`}
+                            color={colors.primary.blue}
+                        />
+                        <StatCard
+                            icon="flame"
+                            label="Current Streak"
+                            value={`${stats.streakDays} days`}
+                            color={colors.semantic.warning}
+                        />
+                        <StatCard
+                            icon="trophy"
+                            label="Longest Streak"
+                            value={`${stats.longestStreak} days`}
+                            color={colors.primary.teal}
+                        />
+                        <StatCard
+                            icon="alert-circle"
+                            label="Missed Doses"
+                            value={stats.missedDoses}
+                            color={colors.semantic.error}
+                        />
+                    </View>
+                )}
 
-            {/* Medication Performance */}
-            <MedicationBarChart medications={medicationStats} />
-
-            {/* Time Block Performance */}
-            <View style={{ paddingHorizontal: spacing.m }}>
-                <TimeBlockPieChart stats={timeBlockStats} />
-            </View>
-
-            {/* Adherence Calendar */}
-            <View style={{ paddingHorizontal: spacing.m }}>
-                <AdherenceCalendar adherenceData={calendarData} />
-            </View>
-
-            {/* Adaptive Reminder Suggestions (read-only for now, accept UI can be added later) */}
-            {recommendations.length > 0 && (
-                <View style={styles.suggestionsContainer}>
-                    <AccessibleText variant="h3" style={styles.suggestionsTitle}>
-                        Smart Reminder Suggestions
-                    </AccessibleText>
-                    {recommendations.map((rec, index) => {
-                        const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}-${index}`;
-                        return (
-                        <View key={key} style={styles.suggestionCard}>
-                            <AccessibleText variant="body" style={styles.suggestionText}>
-                                For <AccessibleText variant="body" style={{ fontWeight: '700' }}>{rec.medication.name}</AccessibleText>, you often struggle with the
-                                <AccessibleText variant="body" style={{ fontWeight: '700' }}> {rec.currentTime} </AccessibleText>
-                                reminder.
-                            </AccessibleText>
-                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.suggestionText}>
-                                {rec.reason}
-                            </AccessibleText>
-                            <AccessibleText variant="body" style={styles.suggestionText}>
-                                We suggest moving this reminder to{' '}
-                                <AccessibleText variant="body" style={{ fontWeight: '700' }}>
-                                    {rec.recommendedTime}
+                {/* Best / Worst Day Summary */}
+                {stats && (stats.bestDay || stats.worstDay) && (
+                    <View style={styles.summaryContainer}>
+                        {stats.bestDay && (
+                            <View style={styles.summaryItem}>
+                                <AccessibleText variant="caption" color={colors.text.secondary}>
+                                    Best Day
                                 </AccessibleText>
-                                .
-                            </AccessibleText>
-                            <View style={styles.suggestionActions}>
-                                <TouchableOpacity
-                                    style={styles.applyButton}
-                                    disabled={loading || applyingId === key}
-                                    onPress={() => handleApplyRecommendation(rec)}
-                                >
-                                    <AccessibleText
-                                        variant="button"
-                                        color={colors.neutral.white}
-                                    >
-                                        {applyingId === key ? 'Applying...' : 'Apply Change'}
-                                    </AccessibleText>
-                                </TouchableOpacity>
+                                <AccessibleText variant="body" style={styles.summaryValue}>
+                                    {stats.bestDay.percentage}% on {stats.bestDay.date}
+                                </AccessibleText>
                             </View>
-                        </View>
-                        );
-                    })}
+                        )}
+                        {stats.worstDay && (
+                            <View style={[styles.summaryItem, { borderLeftWidth: 1, borderLeftColor: colors.border.default, paddingLeft: spacing.m }]}>
+                                <AccessibleText variant="caption" color={colors.text.secondary}>
+                                    Toughest Day
+                                </AccessibleText>
+                                <AccessibleText variant="body" style={styles.summaryValue}>
+                                    {stats.worstDay.percentage}% on {stats.worstDay.date}
+                                </AccessibleText>
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* Adherence Timeline Chart */}
+                <AdherenceLineChart data={dailyData} days={timeRange} />
+
+                {/* Medication Performance */}
+                <MedicationBarChart medications={medicationStats} />
+
+                {/* Time Block Performance */}
+                <View style={{ paddingHorizontal: spacing.m }}>
+                    <TimeBlockPieChart stats={timeBlockStats} />
                 </View>
-            )}
 
-            {/* Empty State */}
-            {!loading && dailyData.length === 0 && (
-                <View style={styles.emptyState}>
-                    <Ionicons name="analytics-outline" size={64} color={colors.neutral.gray400} />
-                    <AccessibleText variant="h3" color={colors.neutral.gray600} style={styles.emptyTitle}>
-                        No Data Yet
-                    </AccessibleText>
-                    <AccessibleText variant="body" color={colors.neutral.gray500} style={styles.emptyText}>
-                        Start taking your medications to see insights and analytics
-                    </AccessibleText>
+                {/* Adherence Calendar */}
+                <View style={{ paddingHorizontal: spacing.m }}>
+                    <AdherenceCalendar adherenceData={calendarData} />
                 </View>
-            )}
 
+                {/* Adaptive Reminder Suggestions */}
+                {recommendations.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                        <AccessibleText variant="h3" style={styles.suggestionsTitle}>
+                            Smart Reminder Suggestions
+                        </AccessibleText>
+                        {recommendations.map((rec, index) => {
+                            const key = `${rec.medication.id}-${rec.currentTime}-${rec.recommendedTime}-${index}`;
+                            return (
+                                <View key={key} style={styles.suggestionCard}>
+                                    <AccessibleText variant="body" style={styles.suggestionText}>
+                                        For <AccessibleText variant="body" style={{ fontWeight: '700' }}>{rec.medication.name}</AccessibleText>, you often struggle with the
+                                        <AccessibleText variant="body" style={{ fontWeight: '700' }}> {rec.currentTime} </AccessibleText>
+                                        reminder.
+                                    </AccessibleText>
+                                    <AccessibleText variant="body" color={colors.text.secondary} style={styles.suggestionText}>
+                                        {rec.reason}
+                                    </AccessibleText>
+                                    <AccessibleText variant="body" style={styles.suggestionText}>
+                                        We suggest moving this reminder to{' '}
+                                        <AccessibleText variant="body" style={{ fontWeight: '700' }}>
+                                            {rec.recommendedTime}
+                                        </AccessibleText>
+                                        .
+                                    </AccessibleText>
+                                    <View style={styles.suggestionActions}>
+                                        <TouchableOpacity
+                                            style={styles.applyButton}
+                                            disabled={loading || applyingId === key}
+                                            onPress={() => handleApplyRecommendation(rec)}
+                                        >
+                                            <AccessibleText
+                                                variant="button"
+                                                color={colors.neutral.white}
+                                            >
+                                                {applyingId === key ? 'Applying...' : 'Apply Change'}
+                                            </AccessibleText>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
 
-        </ScrollView>
+                {/* Empty State */}
+                {!loading && dailyData.length === 0 && (
+                    <View style={styles.emptyState}>
+                        <Icon name="bar-chart-2" size={64} color={colors.neutral.gray300} />
+                        <AccessibleText variant="h3" color={colors.text.secondary} style={styles.emptyTitle}>
+                            No Data Yet
+                        </AccessibleText>
+                        <AccessibleText variant="body" color={colors.text.tertiary} style={styles.emptyText}>
+                            Start taking your medications to see insights and analytics
+                        </AccessibleText>
+                    </View>
+                )}
+            </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.neutral.gray100,
-    },
-    content: {
-        paddingBottom: spacing.xxl,
-    },
-    header: {
-        padding: spacing.xl,
-        alignItems: 'center',
-        marginBottom: spacing.m,
-    },
-    headerTitle: {
-        marginTop: spacing.m,
-        marginBottom: spacing.s,
-    },
-    rangeSelector: {
-        flexDirection: 'row',
-        paddingHorizontal: spacing.m,
-        gap: spacing.s,
-        marginBottom: spacing.m,
-    },
-    rangeButton: {
-        flex: 1,
-        paddingVertical: spacing.m,
-        borderRadius: layout.borderRadius.medium,
-        borderWidth: 2,
-        borderColor: colors.primary.purple,
-        alignItems: 'center',
-        backgroundColor: colors.neutral.white,
-    },
-    rangeButtonActive: {
-        backgroundColor: colors.primary.purple,
-    },
-    statsContainer: {
-        paddingHorizontal: spacing.m,
-        gap: spacing.m,
-        marginBottom: spacing.m,
-    },
-    suggestionsContainer: {
-        paddingHorizontal: spacing.m,
-        marginTop: spacing.m,
-        marginBottom: spacing.l,
-    },
-    suggestionsTitle: {
-        marginBottom: spacing.s,
-    },
-    suggestionCard: {
-        backgroundColor: colors.neutral.white,
-        borderRadius: layout.borderRadius.large,
-        padding: spacing.m,
-        marginTop: spacing.s,
-        ...layout.shadow.small,
-    },
-    suggestionText: {
-        marginBottom: spacing.xs,
-    },
-    suggestionActions: {
-        marginTop: spacing.s,
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-    },
-    applyButton: {
-        backgroundColor: colors.primary.purple,
-        paddingHorizontal: spacing.m,
-        paddingVertical: spacing.s,
-        borderRadius: layout.borderRadius.medium,
-    },
-    summaryContainer: {
-        backgroundColor: colors.neutral.white,
-        borderRadius: layout.borderRadius.large,
-        padding: spacing.m,
-        marginHorizontal: spacing.m,
-        marginBottom: spacing.m,
-        ...layout.shadow.small,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: spacing.m,
-    },
-    summaryItem: {
-        flex: 1,
-    },
-    summaryValue: {
-        marginTop: spacing.xs,
-        fontWeight: '600',
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: spacing.xxl,
-        paddingHorizontal: spacing.l,
-    },
-    emptyTitle: {
-        marginTop: spacing.m,
-        marginBottom: spacing.s,
-    },
-    emptyText: {
-        textAlign: 'center',
-    },
-    tipCard: {
-        backgroundColor: colors.neutral.white,
-        borderRadius: layout.borderRadius.large,
-        padding: spacing.m,
-        marginHorizontal: spacing.m,
-        ...layout.shadow.small,
-    },
-    tipHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.m,
-    },
-    tipTitle: {
-        marginLeft: spacing.s,
-    },
-    tipText: {
-        lineHeight: 24,
-    },
-});
+        container: {
+            flex: 1,
+            backgroundColor: colors.background.default,
+        },
+        content: {
+            paddingBottom: spacing.xxl,
+        },
+        header: {
+            padding: spacing.xl,
+            paddingBottom: spacing.m,
+            marginBottom: spacing.s,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        headerTextContainer: {
+            flex: 1,
+        },
+        headerIcon: {
+            width: 48,
+            height: 48,
+            borderRadius: layout.borderRadius.full,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        headerTitle: {
+            marginBottom: spacing.xs,
+        },
+        rangeSelector: {
+            flexDirection: 'row',
+            paddingHorizontal: spacing.m,
+            gap: spacing.s,
+            marginBottom: spacing.m,
+        },
+        rangeButton: {
+            flex: 1,
+            paddingVertical: spacing.s, // Smaller vertical padding
+            borderRadius: layout.borderRadius.medium,
+            borderWidth: 1, // Thinner border
+            borderColor: colors.primary.main,
+            alignItems: 'center',
+            backgroundColor: colors.background.white,
+        },
+        rangeButtonActive: {
+            backgroundColor: colors.primary.main,
+        },
+        statsContainer: {
+            paddingHorizontal: spacing.m,
+            gap: spacing.m,
+            marginBottom: spacing.m,
+        },
+        suggestionsContainer: {
+            paddingHorizontal: spacing.m,
+            marginTop: spacing.m,
+            marginBottom: spacing.l,
+        },
+        suggestionsTitle: {
+            marginBottom: spacing.s,
+        },
+        suggestionCard: {
+            backgroundColor: colors.background.white,
+            borderRadius: layout.borderRadius.large,
+            padding: spacing.m,
+            marginTop: spacing.s,
+            ...layout.shadows.soft,
+            ...layout.border.default,
+        },
+        suggestionText: {
+            marginBottom: spacing.xs,
+        },
+        suggestionActions: {
+            marginTop: spacing.s,
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+        },
+        applyButton: {
+            backgroundColor: colors.primary.main,
+            paddingHorizontal: spacing.m,
+            paddingVertical: spacing.s,
+            borderRadius: layout.borderRadius.medium,
+        },
+        summaryContainer: {
+            backgroundColor: colors.background.white,
+            borderRadius: layout.borderRadius.large,
+            padding: spacing.m,
+            marginHorizontal: spacing.m,
+            marginBottom: spacing.m,
+            ...layout.shadows.soft,
+            ...layout.border.default,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+        },
+        summaryItem: {
+            flex: 1,
+        },
+        summaryValue: {
+            marginTop: spacing.xs,
+            fontWeight: '600',
+        },
+        emptyState: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: spacing.xxl,
+            paddingHorizontal: spacing.l,
+        },
+        emptyTitle: {
+            marginTop: spacing.m,
+            marginBottom: spacing.s,
+        },
+        emptyText: {
+            textAlign: 'center',
+        },
+        tipCard: {
+            backgroundColor: colors.background.white,
+            borderRadius: layout.borderRadius.large,
+            padding: spacing.m,
+            marginHorizontal: spacing.m,
+            ...layout.shadows.soft,
+        },
+        tipHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: spacing.m,
+        },
+        tipTitle: {
+            marginLeft: spacing.s,
+        },
+        tipText: {
+            lineHeight: 24,
+        },
+    });

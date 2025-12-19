@@ -22,10 +22,10 @@ class SoundManager {
     }
 
     /**
-     * Play a sound effect
+   * Play a sound effect
      * Placeholder implementation - sound files can be added with expo-av if needed
      * Currently silent to avoid unnecessary audio feedback
-     */
+   */
     public async play(_type: SoundType) {
         try {
             // Sound implementation placeholder

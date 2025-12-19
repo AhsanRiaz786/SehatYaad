@@ -29,7 +29,6 @@ export default function DailySummaryCard({ refreshKey }: DailySummaryCardProps) 
         try {
             setLoading(true);
             const data = await getDailySummary();
-            console.log('Daily Summary:', data);
             setSummary(data);
         } catch (error) {
             console.error('Error loading daily summary:', error);

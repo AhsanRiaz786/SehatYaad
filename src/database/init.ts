@@ -141,6 +141,14 @@ export async function initDatabase() {
             ('caregiver_enabled', 'false'),
             ('caregiver_miss_threshold', '3');
         `
+      },
+      {
+        version: 6,
+        up: `
+          CREATE INDEX IF NOT EXISTS idx_doses_medication_id ON doses(medication_id);
+          CREATE INDEX IF NOT EXISTS idx_doses_scheduled_time ON doses(scheduled_time);
+          CREATE INDEX IF NOT EXISTS idx_medications_created_at ON medications(created_at);
+        `
       }
     ];
 
