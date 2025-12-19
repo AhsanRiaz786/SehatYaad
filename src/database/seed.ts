@@ -9,7 +9,7 @@ export const seedDatabase = async () => {
             frequency: 'Twice Daily',
             times: ['08:00', '20:00'],
             notes: 'Take after food',
-            color: '#FF5733'
+            color: '#FF5733',
         });
 
         console.log('Added sample medication with ID:', medId);
@@ -18,7 +18,7 @@ export const seedDatabase = async () => {
             medication_id: medId,
             scheduled_time: Date.now(),
             status: 'taken',
-            actual_time: Date.now()
+            actual_time: Date.now(),
         });
 
         console.log('Logged sample dose');
@@ -36,11 +36,18 @@ export const seedDemoData = async () => {
         console.log('Starting comprehensive demo seed...');
         const db = await getDatabase();
 
-        // Clear existing data (optional - comment out if you want to keep existing data)
-        // await db.execAsync('DELETE FROM doses');
-        // await db.execAsync('DELETE FROM medications');
+        // Check if data already exists - if so, skip seeding
+        const existingMedCount = await db.getFirstAsync<{ count: number }>(
+            'SELECT COUNT(*) as count FROM medications',
+        );
 
-        // Define comprehensive medication list with realistic data
+
+
+        // Clear existing data (optional - comment out if you want to keep existing data)
+        await db.execAsync('DELETE FROM doses');
+        await db.execAsync('DELETE FROM medications');
+
+        // Define comprehensive medication list with realistic data (Reduced to 5 core meds for performance)
         const medications = [
             {
                 name: 'Paracetamol',
@@ -75,132 +82,12 @@ export const seedDemoData = async () => {
                 color: '#50C878',
             },
             {
-                name: 'Levothyroxine',
-                dosage: '75mcg',
-                frequency: 'Once Daily',
-                times: ['07:00'],
-                notes: 'Take on empty stomach, 30 minutes before breakfast',
-                color: '#9B59B6',
-            },
-            {
-                name: 'Omeprazole',
-                dosage: '20mg',
-                frequency: 'Once Daily',
-                times: ['08:00'],
-                notes: 'Take before breakfast',
-                color: '#E74C3C',
-            },
-            {
-                name: 'Atorvastatin',
-                dosage: '20mg',
-                frequency: 'Once Daily',
-                times: ['22:00'],
-                notes: 'Take at bedtime',
-                color: '#3498DB',
-            },
-            {
-                name: 'Lisinopril',
-                dosage: '10mg',
-                frequency: 'Once Daily',
-                times: ['09:00'],
-                notes: 'Monitor blood pressure',
-                color: '#E67E22',
-            },
-            {
-                name: 'Amlodipine',
-                dosage: '5mg',
-                frequency: 'Once Daily',
-                times: ['08:00'],
-                notes: 'Take with or without food',
-                color: '#1ABC9C',
-            },
-            {
-                name: 'Metoprolol',
-                dosage: '50mg',
-                frequency: 'Twice Daily',
-                times: ['08:00', '20:00'],
-                notes: 'Do not stop suddenly',
-                color: '#F39C12',
-            },
-            {
-                name: 'Warfarin',
-                dosage: '5mg',
-                frequency: 'Once Daily',
-                times: ['18:00'],
-                notes: 'Take at same time daily. Avoid vitamin K rich foods',
-                color: '#E91E63',
-            },
-            {
-                name: 'Furosemide',
-                dosage: '40mg',
-                frequency: 'Once Daily',
-                times: ['10:00'],
-                notes: 'Take in morning to avoid frequent urination at night',
-                color: '#00BCD4',
-            },
-            {
-                name: 'Losartan',
-                dosage: '50mg',
-                frequency: 'Once Daily',
-                times: ['08:00'],
-                notes: 'Monitor blood pressure',
-                color: '#FF9800',
-            },
-            {
-                name: 'Gabapentin',
-                dosage: '300mg',
-                frequency: 'Three Times Daily',
-                times: ['08:00', '14:00', '20:00'],
-                notes: 'May cause drowsiness',
-                color: '#673AB7',
-            },
-            {
-                name: 'Sertraline',
-                dosage: '50mg',
-                frequency: 'Once Daily',
-                times: ['09:00'],
-                notes: 'Take with or without food',
-                color: '#2196F3',
-            },
-            {
-                name: 'Tramadol',
-                dosage: '50mg',
-                frequency: 'Four Times Daily',
-                times: ['08:00', '12:00', '16:00', '20:00'],
-                notes: 'Take as needed for pain',
-                color: '#4CAF50',
-            },
-            {
-                name: 'Albuterol',
-                dosage: '100mcg',
-                frequency: 'As Needed',
-                times: ['08:00', '20:00'],
-                notes: 'Inhaler - use before exercise or when short of breath',
-                color: '#FFEB3B',
-            },
-            {
                 name: 'Vitamin D3',
                 dosage: '1000 IU',
                 frequency: 'Once Daily',
                 times: ['12:00'],
                 notes: 'Take with food for better absorption',
                 color: '#FF9800',
-            },
-            {
-                name: 'Calcium',
-                dosage: '500mg',
-                frequency: 'Twice Daily',
-                times: ['10:00', '18:00'],
-                notes: 'Take with vitamin D',
-                color: '#795548',
-            },
-            {
-                name: 'Multivitamin',
-                dosage: '1 tablet',
-                frequency: 'Once Daily',
-                times: ['09:00'],
-                notes: 'Take with breakfast',
-                color: '#607D8B',
             },
         ];
 
@@ -214,10 +101,10 @@ export const seedDemoData = async () => {
             console.log(`Added medication: ${med.name} (ID: ${medId})`);
         }
 
-        // Generate historical dose data for the last 21 days
+        // Generate historical dose data for the last 7 days (Reduced from 21)
         console.log('Generating historical dose data...');
 
-        for (let dayOffset = 0; dayOffset < 21; dayOffset++) {
+        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
             const date = new Date(now);
             date.setDate(now.getDate() - dayOffset);
             date.setHours(0, 0, 0, 0);
@@ -226,12 +113,10 @@ export const seedDemoData = async () => {
             for (let i = 0; i < medicationIds.length; i++) {
                 const medId = medicationIds[i];
                 const med = medications[i];
-                const dayOfWeek = date.getDay();
 
                 // Skip some medications occasionally to show missed doses (for variety)
                 // About 10% miss rate for demo purposes
                 if (Math.random() < 0.1 && dayOffset > 0) {
-                    // Skip this medication for this day
                     continue;
                 }
 
@@ -247,23 +132,18 @@ export const seedDemoData = async () => {
                     let delayMinutes = 0;
 
                     const rand = Math.random();
-                    if (rand < 0.75) {
-                        // 75% taken on time or slightly late (within 30 minutes)
+                    if (rand < 0.80) {
+                        // 80% taken on time or slightly late
                         status = 'taken';
-                        delayMinutes = Math.floor(Math.random() * 30); // 0-30 minutes late
+                        delayMinutes = Math.floor(Math.random() * 15);
                         actualTime = scheduledTime + (delayMinutes * 60);
                     } else if (rand < 0.90) {
-                        // 15% taken but late (30-60 minutes)
-                        status = 'taken';
-                        delayMinutes = 30 + Math.floor(Math.random() * 30); // 30-60 minutes late
-                        actualTime = scheduledTime + (delayMinutes * 60);
-                    } else if (rand < 0.95) {
-                        // 5% snoozed
+                        // 10% snoozed
                         status = 'snoozed';
                         delayMinutes = 10;
                         actualTime = scheduledTime + (delayMinutes * 60);
                     } else {
-                        // 5% missed
+                        // 10% missed
                         status = 'missed';
                         actualTime = scheduledTime;
                     }
@@ -281,7 +161,7 @@ export const seedDemoData = async () => {
 
         console.log(`✅ Demo seed complete! Added ${medicationIds.length} medications with 21 days of history`);
         console.log(`📊 Total medications: ${medicationIds.length}`);
-        
+
         // Count doses
         const doseCount = await db.getFirstAsync<{ count: number }>(
             'SELECT COUNT(*) as count FROM doses'

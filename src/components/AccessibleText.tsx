@@ -11,12 +11,12 @@ interface AccessibleTextProps extends TextProps {
 export default function AccessibleText({
     style,
     variant = 'body',
-    color = colors.text.charcoal,
+    color = colors.text.primary,
     children,
     ...props
 }: AccessibleTextProps) {
     const { language, isRTL } = useLanguage();
-    
+
     // Determine font family based on language and variant
     const getFontFamily = () => {
         if (variant === 'display' || variant === 'h1' || variant === 'h2' || variant === 'h3') {

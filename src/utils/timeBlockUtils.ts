@@ -37,16 +37,16 @@ export function getTimeBlockInfo(block: TimeBlock): TimeBlockInfo {
                 name: 'Morning',
                 label: 'Morning',
                 timeRange: '6 AM - 11 AM',
-                icon: 'sunrise', // Fajr context - sunrise icon
+                icon: 'sunrise', // Reverting to Sunrise (Fajr)
                 color: '#F59E0B',
-                gradient: [] // No gradients - use solid colors
+                gradient: []
             };
         case 'noon':
             return {
                 name: 'Noon',
                 label: 'Noon',
                 timeRange: '11 AM - 3 PM',
-                icon: 'sun', // Sun icon for noon
+                icon: 'sun', // Lucide: Sun
                 color: '#F97316',
                 gradient: []
             };
@@ -55,7 +55,7 @@ export function getTimeBlockInfo(block: TimeBlock): TimeBlockInfo {
                 name: 'Evening',
                 label: 'Evening',
                 timeRange: '3 PM - 8 PM',
-                icon: 'sunset', // Maghrib context - sunset icon
+                icon: 'sunset', // Reverting to Sunset (Maghrib)
                 color: '#7C3AED',
                 gradient: []
             };
@@ -64,7 +64,7 @@ export function getTimeBlockInfo(block: TimeBlock): TimeBlockInfo {
                 name: 'Night',
                 label: 'Night',
                 timeRange: '8 PM - 6 AM',
-                icon: 'moon', // Crescent moon icon
+                icon: 'moon', // Lucide: Moon
                 color: '#1E40AF',
                 gradient: []
             };

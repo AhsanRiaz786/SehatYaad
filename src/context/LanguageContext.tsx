@@ -20,6 +20,12 @@ const translations: Record<Language, Record<string, string>> = {
         'home.title': "Today's Meds",
         'home.addMedication': 'Add Medication',
         'home.scanPrescription': 'Scan Prescription',
+        'home.heroTitle': 'Stay on track with your health',
+        'home.voiceInput': 'Voice Input',
+        'home.addManual': 'Add Manually',
+        'greeting.goodMorning': 'Good Morning,',
+        'greeting.goodAfternoon': 'Good Afternoon,',
+        'greeting.goodEvening': 'Good Evening,',
         'medication.markAsTaken': 'Mark as Taken',
         'medication.name': 'Name',
         'medication.time': 'Time',
@@ -40,6 +46,12 @@ const translations: Record<Language, Record<string, string>> = {
         'home.title': 'آج کی دوائیں',
         'home.addMedication': 'دوائی شامل کریں',
         'home.scanPrescription': 'نسخہ اسکین کریں',
+        'home.heroTitle': 'اپنی صحت کا خیال رکھیں',
+        'home.voiceInput': 'آواز ان پٹ',
+        'home.addManual': 'دستی شامل کریں',
+        'greeting.goodMorning': 'صبح بخیر،',
+        'greeting.goodAfternoon': 'سہ پہر بخیر،',
+        'greeting.goodEvening': 'شام بخیر،',
         'medication.markAsTaken': 'لیا ہوا نشان لگائیں',
         'medication.name': 'نام',
         'medication.time': 'وقت',
@@ -81,7 +93,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
             setLanguageState(lang);
             setIsRTL(lang === 'ur');
             await AsyncStorage.setItem('app_language', lang);
-            
+
             // Force RTL layout change
             if (I18nManager.isRTL !== (lang === 'ur')) {
                 I18nManager.forceRTL(lang === 'ur');
@@ -94,13 +106,13 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const t = (key: string, params?: Record<string, string>): string => {
         let translation = translations[language][key] || translations.en[key] || key;
-        
+
         if (params) {
             Object.keys(params).forEach(paramKey => {
                 translation = translation.replace(`{{${paramKey}}}`, params[paramKey]);
             });
         }
-        
+
         return translation;
     };
 

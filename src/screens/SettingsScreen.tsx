@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Switch, TouchableOpacity } from 'react-native';
 import { useTTS } from '../context/TTSContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../components/Icon';
 import AccessibleButton from '../components/AccessibleButton';
 import AccessibleText from '../components/AccessibleText';
 import AccessibleInput from '../components/AccessibleInput';
@@ -157,27 +156,26 @@ export default function SettingsScreen() {
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             {/* Header */}
-            <LinearGradient
-                colors={colors.gradients.primary as [string, string, ...string[]]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <Ionicons name="settings" size={48} color={colors.neutral.white} />
-                <AccessibleText variant="h1" color={colors.neutral.white} style={styles.headerTitle}>
-                    Settings
-                </AccessibleText>
-                <AccessibleText variant="body" color={colors.neutral.white} style={styles.headerSubtitle}>
-                    Manage your preferences
-                </AccessibleText>
-            </LinearGradient>
+            <View style={styles.header}>
+                <View style={styles.headerTextContainer}>
+                    <AccessibleText variant="h1" color={colors.primary.dark} style={styles.headerTitle}>
+                        Settings
+                    </AccessibleText>
+                    <AccessibleText variant="body" color={colors.text.secondary}>
+                        Manage your preferences
+                    </AccessibleText>
+                </View>
+                <View style={[styles.headerIcon, { backgroundColor: colors.primary.main + '15' }]}>
+                    <Icon name="settings" size={28} color={colors.primary.main} />
+                </View>
+            </View>
 
             {/* Language Settings */}
             <Card style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionHeaderLeft}>
-                        <View style={styles.iconContainer}>
-                            <Ionicons name="language" size={24} color={colors.primary.forestGreen} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.primary.main + '15' }]}>
+                            <Icon name="languages" size={24} color={colors.primary.main} />
                         </View>
                         <AccessibleText variant="h3" style={styles.sectionTitle}>
                             Language
@@ -193,13 +191,13 @@ export default function SettingsScreen() {
                     >
                         <AccessibleText
                             variant="body"
-                            color={language === 'en' ? colors.neutral.white : colors.text.charcoal}
+                            color={language === 'en' ? colors.neutral.white : colors.text.primary}
                             style={styles.languageText}
                         >
                             English
                         </AccessibleText>
                         {language === 'en' && (
-                            <Ionicons name="checkmark-circle" size={20} color={colors.neutral.white} />
+                            <Icon name="check-circle" size={20} color={colors.neutral.white} />
                         )}
                     </TouchableOpacity>
 
@@ -210,13 +208,13 @@ export default function SettingsScreen() {
                     >
                         <AccessibleText
                             variant="body"
-                            color={language === 'ur' ? colors.neutral.white : colors.text.charcoal}
+                            color={language === 'ur' ? colors.neutral.white : colors.text.primary}
                             style={styles.languageText}
                         >
                             اردو
                         </AccessibleText>
                         {language === 'ur' && (
-                            <Ionicons name="checkmark-circle" size={20} color={colors.neutral.white} />
+                            <Icon name="check-circle" size={20} color={colors.neutral.white} />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -226,8 +224,8 @@ export default function SettingsScreen() {
             <Card style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionHeaderLeft}>
-                        <View style={styles.iconContainer}>
-                            <Ionicons name="mic" size={24} color={colors.primary.orange} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.primary.main + '15' }]}>
+                            <Icon name="mic" size={24} color={colors.primary.main} />
                         </View>
                         <AccessibleText variant="h3" style={styles.sectionTitle}>
                             Voice Feedback
@@ -236,7 +234,7 @@ export default function SettingsScreen() {
                     <Switch
                         value={enabled}
                         onValueChange={setEnabled}
-                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.main }}
                         thumbColor={colors.neutral.white}
                     />
                 </View>
@@ -244,7 +242,7 @@ export default function SettingsScreen() {
                 {enabled && (
                     <View style={styles.voiceSettingsContent}>
                         <View style={styles.voiceSettingRow}>
-                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.voiceSettingLabel}>
+                            <AccessibleText variant="body" color={colors.text.secondary} style={styles.voiceSettingLabel}>
                                 Speed
                             </AccessibleText>
                             <View style={styles.optionRow}>
@@ -260,7 +258,7 @@ export default function SettingsScreen() {
                                     >
                                         <AccessibleText
                                             variant="caption"
-                                            color={voiceSpeed === option ? colors.neutral.white : colors.text.charcoal}
+                                            color={voiceSpeed === option ? colors.neutral.white : colors.text.primary}
                                             style={styles.optionButtonText}
                                         >
                                             {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -271,7 +269,7 @@ export default function SettingsScreen() {
                         </View>
 
                         <View style={styles.voiceSettingRow}>
-                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.voiceSettingLabel}>
+                            <AccessibleText variant="body" color={colors.text.secondary} style={styles.voiceSettingLabel}>
                                 Pitch
                             </AccessibleText>
                             <View style={styles.optionRow}>
@@ -287,7 +285,7 @@ export default function SettingsScreen() {
                                     >
                                         <AccessibleText
                                             variant="caption"
-                                            color={voicePitch === option ? colors.neutral.white : colors.text.charcoal}
+                                            color={voicePitch === option ? colors.neutral.white : colors.text.primary}
                                             style={styles.optionButtonText}
                                         >
                                             {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -298,7 +296,7 @@ export default function SettingsScreen() {
                         </View>
 
                         <View style={styles.voiceSettingRow}>
-                            <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.voiceSettingLabel}>
+                            <AccessibleText variant="body" color={colors.text.secondary} style={styles.voiceSettingLabel}>
                                 Volume
                             </AccessibleText>
                             <View style={styles.optionRow}>
@@ -314,7 +312,7 @@ export default function SettingsScreen() {
                                     >
                                         <AccessibleText
                                             variant="caption"
-                                            color={voiceVolume === option ? colors.neutral.white : colors.text.charcoal}
+                                            color={voiceVolume === option ? colors.neutral.white : colors.text.primary}
                                             style={styles.optionButtonText}
                                         >
                                             {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -329,7 +327,7 @@ export default function SettingsScreen() {
                             onPress={() => speak('This is a test of the voice settings.')}
                             variant="outline"
                             size="small"
-                            icon={<Ionicons name="play-circle-outline" size={16} color={colors.primary.blue} />}
+                            icon={<Icon name="play-circle" size={16} color={colors.primary.main} />}
                             iconPosition="left"
                             style={styles.testButton}
                         />
@@ -341,8 +339,8 @@ export default function SettingsScreen() {
             <Card style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionHeaderLeft}>
-                        <View style={styles.iconContainer}>
-                            <Ionicons name="bulb" size={24} color={colors.primary.orange} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.primary.main + '15' }]}>
+                            <Icon name="lightbulb" size={24} color={colors.primary.main} />
                         </View>
                         <AccessibleText variant="h3" style={styles.sectionTitle}>
                             Smart Reminders
@@ -352,34 +350,34 @@ export default function SettingsScreen() {
 
                 <View style={styles.switchRow}>
                     <View style={styles.switchRowContent}>
-                        <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.switchLabel}>
+                        <AccessibleText variant="body" color={colors.text.primary} style={styles.switchLabel}>
                             Adaptive Scheduling
                         </AccessibleText>
-                        <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.switchDescription}>
+                        <AccessibleText variant="caption" color={colors.text.tertiary} style={styles.switchDescription}>
                             Automatically adjust reminder times based on your medication-taking patterns
                         </AccessibleText>
                     </View>
                     <Switch
                         value={adaptiveEnabled}
                         onValueChange={handleAdaptiveToggle}
-                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.main }}
                         thumbColor={colors.neutral.white}
                     />
                 </View>
 
                 <View style={[styles.switchRow, styles.switchRowWithBorder]}>
                     <View style={styles.switchRowContent}>
-                        <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.switchLabel}>
+                        <AccessibleText variant="body" color={colors.text.primary} style={styles.switchLabel}>
                             Pre-Alerts
                         </AccessibleText>
-                        <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.switchDescription}>
+                        <AccessibleText variant="caption" color={colors.text.tertiary} style={styles.switchDescription}>
                             Get advance reminders for medications you often miss or snooze
                         </AccessibleText>
                     </View>
                     <Switch
                         value={prealertsEnabled}
                         onValueChange={handlePrealertsToggle}
-                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.main }}
                         thumbColor={colors.neutral.white}
                     />
                 </View>
@@ -389,8 +387,8 @@ export default function SettingsScreen() {
             <Card style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionHeaderLeft}>
-                        <View style={styles.iconContainer}>
-                            <Ionicons name="people" size={24} color={colors.primary.orange} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.primary.main + '15' }]}>
+                            <Icon name="users" size={24} color={colors.primary.main} />
                         </View>
                         <AccessibleText variant="h3" style={styles.sectionTitle}>
                             Caregiver Setup
@@ -399,12 +397,12 @@ export default function SettingsScreen() {
                     <Switch
                         value={caregiver.enabled}
                         onValueChange={(val: boolean) => setCaregiver(prev => ({ ...prev, enabled: val }))}
-                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.orange }}
+                        trackColor={{ false: colors.neutral.gray300, true: colors.primary.main }}
                         thumbColor={colors.neutral.white}
                     />
                 </View>
 
-                <AccessibleText variant="caption" color={colors.neutral.gray600} style={styles.sectionDescription}>
+                <AccessibleText variant="caption" color={colors.text.tertiary} style={styles.sectionDescription}>
                     Notifications will be sent to your caregiver if you miss doses consistently.
                 </AccessibleText>
 
@@ -415,7 +413,7 @@ export default function SettingsScreen() {
                             value={caregiver.name}
                             onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, name: val }))}
                             placeholder="e.g. Ali Khan"
-                            icon={<Ionicons name="person-outline" size={20} color={colors.neutral.gray600} />}
+                            icon={<Icon name="user" size={20} color={colors.neutral.gray600} />}
                         />
 
                         <AccessibleInput
@@ -424,7 +422,7 @@ export default function SettingsScreen() {
                             onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, phone: val }))}
                             placeholder="e.g. +923001234567"
                             keyboardType="phone-pad"
-                            icon={<Ionicons name="call-outline" size={20} color={colors.neutral.gray600} />}
+                            icon={<Icon name="phone" size={20} color={colors.neutral.gray600} />}
                         />
 
                         <AccessibleInput
@@ -433,7 +431,7 @@ export default function SettingsScreen() {
                             onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, email: val }))}
                             placeholder="e.g. caregiver@example.com"
                             keyboardType="email-address"
-                            icon={<Ionicons name="mail-outline" size={20} color={colors.neutral.gray600} />}
+                            icon={<Icon name="mail" size={20} color={colors.neutral.gray600} />}
                         />
 
                         <AccessibleInput
@@ -441,15 +439,15 @@ export default function SettingsScreen() {
                             value={caregiver.relationship}
                             onChangeText={(val: string) => setCaregiver(prev => ({ ...prev, relationship: val }))}
                             placeholder="e.g. Son, Daughter, Spouse"
-                            icon={<Ionicons name="heart-outline" size={20} color={colors.neutral.gray600} />}
+                            icon={<Icon name="heart" size={20} color={colors.neutral.gray600} />}
                         />
 
                         <View style={styles.missThresholdRow}>
                             <View style={styles.missThresholdLabel}>
-                                <AccessibleText variant="body" color={colors.neutral.gray700} style={styles.missThresholdLabelText}>
+                                <AccessibleText variant="body" color={colors.text.primary} style={styles.missThresholdLabelText}>
                                     Alert Threshold
                                 </AccessibleText>
-                                <AccessibleText variant="caption" color={colors.neutral.gray600}>
+                                <AccessibleText variant="caption" color={colors.text.tertiary}>
                                     Alert after {caregiver.missThreshold} missed {caregiver.missThreshold === 1 ? 'dose' : 'doses'}
                                 </AccessibleText>
                             </View>
@@ -463,14 +461,14 @@ export default function SettingsScreen() {
                                     disabled={caregiver.missThreshold <= 1}
                                     activeOpacity={0.7}
                                 >
-                                    <Ionicons
-                                        name="remove"
+                                    <Icon
+                                        name="minus"
                                         size={20}
                                         color={caregiver.missThreshold > 1 ? colors.neutral.white : colors.neutral.gray400}
                                     />
                                 </TouchableOpacity>
                                 <View style={styles.missThresholdValue}>
-                                    <AccessibleText variant="body" color={colors.text.charcoal} style={styles.missThresholdText}>
+                                    <AccessibleText variant="body" color={colors.text.primary} style={styles.missThresholdText}>
                                         {caregiver.missThreshold}
                                     </AccessibleText>
                                 </View>
@@ -483,8 +481,8 @@ export default function SettingsScreen() {
                                     disabled={caregiver.missThreshold >= 10}
                                     activeOpacity={0.7}
                                 >
-                                    <Ionicons
-                                        name="add"
+                                    <Icon
+                                        name="plus"
                                         size={20}
                                         color={caregiver.missThreshold < 10 ? colors.neutral.white : colors.neutral.gray400}
                                     />
@@ -498,7 +496,7 @@ export default function SettingsScreen() {
                             variant="primary"
                             size="small"
                             disabled={isSaving}
-                            icon={<Ionicons name="save-outline" size={16} color={colors.neutral.white} />}
+                            icon={<Icon name="save" size={16} color={colors.neutral.white} />}
                             style={styles.saveButton}
                         />
                     </View>
@@ -512,26 +510,37 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.cream,
+        backgroundColor: colors.background.default,
     },
     content: {
         paddingBottom: spacing.xxl,
     },
     header: {
         padding: spacing.xl,
+        paddingBottom: spacing.m,
+        marginBottom: spacing.s,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.m,
+    },
+    headerTextContainer: {
+        flex: 1,
+    },
+    headerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: layout.borderRadius.full,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     headerTitle: {
-        marginTop: spacing.m,
-        marginBottom: spacing.s,
-    },
-    headerSubtitle: {
-        opacity: 0.9,
+        marginBottom: spacing.xs,
     },
     section: {
-        marginHorizontal: spacing.m,
-        marginBottom: spacing.m,
+        marginHorizontal: spacing.l,
+        marginBottom: spacing.l,
+        backgroundColor: colors.background.white,
+        ...layout.shadows.soft,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -548,7 +557,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: layout.borderRadius.small,
-        backgroundColor: colors.neutral.gray100,
+        backgroundColor: 'transparent',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: spacing.m,
@@ -571,13 +580,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: spacing.m,
         borderRadius: layout.borderRadius.medium,
-        backgroundColor: colors.neutral.gray100,
+        backgroundColor: colors.background.default,
         borderWidth: 2,
         borderColor: 'transparent',
     },
     languageOptionActive: {
-        backgroundColor: colors.primary.forestGreen,
-        borderColor: colors.primary.forestGreen,
+        backgroundColor: colors.primary.main,
+        borderColor: colors.primary.main,
     },
     languageText: {
         fontWeight: '600',
@@ -601,15 +610,15 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.m,
         paddingHorizontal: spacing.s,
         borderRadius: layout.borderRadius.small,
-        backgroundColor: colors.neutral.gray100,
+        backgroundColor: colors.background.default,
         borderWidth: 2,
         borderColor: 'transparent',
         alignItems: 'center',
         justifyContent: 'center',
     },
     optionButtonActive: {
-        backgroundColor: colors.primary.forestGreen,
-        borderColor: colors.primary.forestGreen,
+        backgroundColor: colors.primary.main,
+        borderColor: colors.primary.main,
     },
     optionButtonText: {
         fontWeight: '600',
@@ -625,7 +634,7 @@ const styles = StyleSheet.create({
     },
     switchRowWithBorder: {
         borderTopWidth: 1,
-        borderTopColor: colors.neutral.gray200,
+        borderTopColor: colors.border.default,
         paddingTop: spacing.m,
         marginTop: spacing.s,
     },
@@ -651,7 +660,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.m,
         paddingTop: spacing.l,
         borderTopWidth: 1,
-        borderTopColor: colors.neutral.gray200,
+        borderTopColor: colors.border.default,
     },
     missThresholdLabel: {
         flex: 1,
@@ -669,7 +678,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: layout.borderRadius.small,
-        backgroundColor: colors.primary.orange,
+        backgroundColor: colors.primary.main,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -694,7 +703,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: spacing.m,
         borderBottomWidth: 1,
-        borderBottomColor: colors.neutral.gray200,
+        borderBottomColor: colors.border.default,
     },
     infoRowLast: {
         borderBottomWidth: 0,
@@ -702,7 +711,7 @@ const styles = StyleSheet.create({
     },
     infoValue: {
         fontWeight: '600',
-        color: colors.text.charcoal,
+        color: colors.text.primary,
     },
     aboutText: {
         lineHeight: 24,

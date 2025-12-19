@@ -46,45 +46,45 @@ export default function AccessibleButton({
         switch (variant) {
             case 'primary':
                 return {
-                    backgroundColor: colors.primary.forestGreen,
-                    borderColor: colors.primary.forestGreen,
-                    textColor: colors.background.white,
+                    backgroundColor: colors.primary.main,
+                    borderColor: colors.primary.main,
+                    textColor: colors.background.paper,
                 };
             case 'success':
                 return {
-                    backgroundColor: colors.semantic.success,
-                    borderColor: colors.semantic.success,
-                    textColor: colors.background.white,
+                    backgroundColor: colors.status.success.main,
+                    borderColor: colors.status.success.main,
+                    textColor: colors.background.paper,
                 };
             case 'danger':
                 return {
-                    backgroundColor: colors.semantic.error,
-                    borderColor: colors.semantic.error,
-                    textColor: colors.background.white,
+                    backgroundColor: colors.status.error.main,
+                    borderColor: colors.status.error.main,
+                    textColor: colors.background.paper,
                 };
             case 'secondary':
                 return {
-                    backgroundColor: colors.background.white,
-                    borderColor: colors.primary.forestGreen,
-                    textColor: colors.primary.forestGreen,
+                    backgroundColor: colors.background.paper,
+                    borderColor: colors.primary.main,
+                    textColor: colors.primary.main,
                 };
             case 'outline':
                 return {
                     backgroundColor: 'transparent',
-                    borderColor: colors.border.grayDark,
-                    textColor: colors.text.charcoal,
+                    borderColor: colors.border.default,
+                    textColor: colors.text.primary,
                 };
             case 'ghost':
                 return {
                     backgroundColor: 'transparent',
                     borderColor: 'transparent',
-                    textColor: colors.primary.forestGreen,
+                    textColor: colors.primary.main,
                 };
             default:
                 return {
-                    backgroundColor: colors.primary.forestGreen,
-                    borderColor: colors.primary.forestGreen,
-                    textColor: colors.background.white,
+                    backgroundColor: colors.primary.main,
+                    borderColor: colors.primary.main,
+                    textColor: colors.background.paper,
                 };
         }
     };

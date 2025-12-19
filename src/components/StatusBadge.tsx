@@ -24,14 +24,14 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
                 };
             case 'pending':
                 return {
-                    icon: 'time' as const,
+                    icon: 'hourglass' as const,
                     color: colors.semantic.warning,
                     bgColor: colors.semantic.warning + '20',
                     label: 'Pending',
                 };
             case 'missed':
                 return {
-                    icon: 'close' as const,
+                    icon: 'alert-circle' as const,
                     color: colors.semantic.error,
                     bgColor: colors.semantic.error + '20',
                     label: 'Missed',
@@ -45,7 +45,7 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
                 };
             case 'skipped':
                 return {
-                    icon: 'x' as const,
+                    icon: 'slash' as const,
                     color: colors.neutral.gray600,
                     bgColor: colors.neutral.gray300,
                     label: 'Skipped',
@@ -58,9 +58,9 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
     if (compact) {
         return (
             <View style={[styles.compactBadge, { backgroundColor: config.bgColor }]}>
-                <Icon 
-                    name={config.icon} 
-                    size={16} 
+                <Icon
+                    name={config.icon}
+                    size={16}
                     color={config.color}
                     active={status === 'taken'}
                 />
@@ -70,9 +70,9 @@ export default function StatusBadge({ status, time, compact = false }: StatusBad
 
     return (
         <View style={[styles.badge, { backgroundColor: config.bgColor }]}>
-            <Icon 
-                name={config.icon} 
-                size={18} 
+            <Icon
+                name={config.icon}
+                size={18}
                 color={config.color}
                 active={status === 'taken'}
             />

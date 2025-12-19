@@ -1,17 +1,17 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '../../components/Icon';
 import AccessibleText from '../AccessibleText';
 import { colors, spacing, layout } from '../../utils/theme';
 
 interface StatCardProps {
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: string;
     label: string;
     value: string | number;
     trend?: 'up' | 'down' | 'stable';
     trendValue?: string;
-    color?: string;
+    color?: string; // Icon/Theme color
+    // Dropping gradient prop as we are moving to flat design
     gradient?: [string, string];
 }
 
@@ -21,38 +21,33 @@ export default function StatCard({
     value,
     trend,
     trendValue,
-    color = colors.primary.purple,
-    gradient = colors.gradients.primary as [string, string],
+    color = colors.primary.main,
 }: StatCardProps) {
     const getTrendIcon = () => {
         if (!trend) return null;
         switch (trend) {
             case 'up':
-                return <Ionicons name="trending-up" size={16} color={colors.semantic.success} />;
+                // Using standard Icon component names (mapped to Lucide)
+                return <Icon name="trending-up" size={16} color={colors.semantic.success} />;
             case 'down':
-                return <Ionicons name="trending-down" size={16} color={colors.semantic.error} />;
+                return <Icon name="trending-down" size={16} color={colors.semantic.error} />;
             case 'stable':
-                return <Ionicons name="remove" size={16} color={colors.neutral.gray500} />;
+                return <Icon name="minus" size={16} color={colors.neutral.gray500} />;
         }
     };
 
     return (
         <View style={styles.container}>
-            <LinearGradient
-                colors={gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradient}
-            >
-                <View style={styles.iconContainer}>
-                    <Ionicons name={icon} size={24} color={colors.neutral.white} />
+            <View style={styles.contentRow}>
+                <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                    <Icon name={icon} size={24} color={color} />
                 </View>
 
-                <View style={styles.content}>
-                    <AccessibleText variant="caption" color={colors.neutral.white} style={{ opacity: 0.9 }}>
+                <View style={styles.textContent}>
+                    <AccessibleText variant="caption" color={colors.text.secondary}>
                         {label}
                     </AccessibleText>
-                    <AccessibleText variant="h1" color={colors.neutral.white} style={styles.value}>
+                    <AccessibleText variant="h2" color={colors.text.primary} style={styles.value}>
                         {value}
                     </AccessibleText>
 
@@ -61,48 +56,49 @@ export default function StatCard({
                             {getTrendIcon()}
                             <AccessibleText
                                 variant="small"
-                                color={colors.neutral.white}
-                                style={{ marginLeft: spacing.xs, opacity: 0.9 }}
+                                color={colors.text.secondary}
+                                style={{ marginLeft: spacing.xs }}
                             >
                                 {trendValue}
                             </AccessibleText>
                         </View>
                     )}
                 </View>
-            </LinearGradient>
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        backgroundColor: colors.background.white,
         borderRadius: layout.borderRadius.large,
-        overflow: 'hidden',
-        ...layout.shadow.small,
+        padding: spacing.m,
+        ...layout.shadows.soft, // Use the new soft shadow
+        ...layout.border.default, // Subtle border
     },
-    gradient: {
+    contentRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing.m,
     },
     iconContainer: {
         width: 48,
         height: 48,
-        borderRadius: 24,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: layout.borderRadius.full,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: spacing.m,
     },
-    content: {
+    textContent: {
         flex: 1,
     },
     value: {
-        marginTop: spacing.xs,
-        marginBottom: spacing.xs,
+        marginTop: 2,
+        marginBottom: 2,
     },
     trendContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginTop: 2,
     },
 });

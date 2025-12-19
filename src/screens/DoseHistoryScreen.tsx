@@ -32,12 +32,16 @@ export default function DoseHistoryScreen() {
 
     useFocusEffect(
         React.useCallback(() => {
-            loadHistory();
+            loadHistory(true);
         }, [selectedMedId])
     );
 
-    const loadHistory = async () => {
-        setLoading(true);
+    useEffect(() => {
+        loadHistory(false);
+    }, []);
+
+    const loadHistory = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             // Get last 7 days
             const endDate = new Date();

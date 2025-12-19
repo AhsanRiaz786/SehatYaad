@@ -21,7 +21,7 @@ export default function App() {
     async function setup() {
       try {
         await initDatabase();
-        
+
         // Seed demo data if enabled
         if (ENABLE_DEMO_SEED) {
           try {
@@ -31,7 +31,7 @@ export default function App() {
             console.warn('Demo seed error (non-critical):', seedError);
           }
         }
-        
+
         setDbInitialized(true);
       } catch (e) {
         // Error handled silently - database initialization will retry

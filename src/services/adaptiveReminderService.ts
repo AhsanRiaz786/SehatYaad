@@ -191,9 +191,11 @@ function getRecommendedTime(currentTime: string, pattern: ReminderPattern): stri
 /**
  * Fetch schedule change recommendations that are safe to show to the user.
  */
-export async function getScheduleRecommendations(): Promise<ScheduleRecommendation[]> {
+export async function getScheduleRecommendations(cachedMedications?: Medication[]): Promise<ScheduleRecommendation[]> {
     const db = await getDatabase();
-    const meds = await getMedications();
+    // Use cached medications if provided, otherwise fetch them
+    const meds = cachedMedications || await getMedications();
+
     const rows = await db.getAllAsync<ReminderPattern & { medication_name: string }>(
         `SELECT rp.*, m.name as medication_name
          FROM reminder_patterns rp

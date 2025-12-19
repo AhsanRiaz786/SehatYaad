@@ -1,5 +1,4 @@
-import * as SQLite from 'expo-sqlite';
-import { DATABASE_NAME, getDatabase } from './init';
+import { getDatabase } from './init';
 
 const getDB = async () => await getDatabase();
 
@@ -43,18 +42,20 @@ export const getMedications = async (): Promise<Medication[]> => {
     return result.map(row => ({
         ...row,
         times: JSON.parse(row.times),
-        notification_ids: row.notification_ids ? JSON.parse(row.notification_ids) : []
+        notification_ids: row.notification_ids ? JSON.parse(row.notification_ids) : [],
     }));
 };
 
 export const getMedicationById = async (id: number): Promise<Medication | null> => {
     const db = await getDB();
     const result = await db.getFirstAsync<any>('SELECT * FROM medications WHERE id = ?', id);
-    if (!result) return null;
+    if (!result) {
+        return null;
+    }
     return {
         ...result,
         times: JSON.parse(result.times),
-        notification_ids: result.notification_ids ? JSON.parse(result.notification_ids) : []
+        notification_ids: result.notification_ids ? JSON.parse(result.notification_ids) : [],
     };
 };
 
@@ -73,7 +74,9 @@ export const updateMedication = async (id: number, medication: Partial<Medicatio
     if (medication.notification_sound) { fields.push('notification_sound = ?'); values.push(medication.notification_sound); }
     if (medication.notification_ids) { fields.push('notification_ids = ?'); values.push(JSON.stringify(medication.notification_ids)); }
 
-    if (fields.length === 0) return;
+    if (fields.length === 0) {
+        return;
+    }
 
     values.push(id);
 
@@ -136,8 +139,8 @@ export const getTodaysDoses = async (): Promise<(Dose & { medication: Medication
             color: row.color,
             notification_ids: row.notification_ids ? JSON.parse(row.notification_ids) : [],
             notification_sound: row.notification_sound,
-            created_at: row.created_at
-        }
+            created_at: row.created_at,
+        },
     }));
 };
 
@@ -187,17 +190,32 @@ export const getDailySummary = async (date: Date = new Date()) => {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    const startTimestamp = Math.floor(startOfDay.getTime() / 1000);
+    const endTimestamp = Math.floor(endOfDay.getTime() / 1000);
+    const now = Date.now() / 1000;
+
     // Get all medications
     const medications = await getMedications();
-    console.log(`Checking ${medications.length} medications for today`);
 
-    // Get all logged doses for today
+    // Get all logged doses for today - use a Map for O(1) lookups
     const loggedDoses = await db.getAllAsync<Dose>(
         'SELECT * FROM doses WHERE scheduled_time >= ? AND scheduled_time <= ?',
-        Math.floor(startOfDay.getTime() / 1000),
-        Math.floor(endOfDay.getTime() / 1000)
+        startTimestamp,
+        endTimestamp
     );
-    console.log(`Found ${loggedDoses.length} logged doses in database`);
+
+    // Create a Map for fast lookups: key = `${medication_id}_${scheduled_time}`
+    const doseMap = new Map<string, Dose>();
+    for (const dose of loggedDoses) {
+        // Create keys for all times within 5 minutes of scheduled time
+        // This allows us to match doses that were logged slightly off-schedule
+        for (let offset = -300; offset <= 300; offset += 60) {
+            const key = `${dose.medication_id}_${dose.scheduled_time + offset}`;
+            if (!doseMap.has(key)) {
+                doseMap.set(key, dose);
+            }
+        }
+    }
 
     let total = 0;
     let taken = 0;
@@ -205,12 +223,10 @@ export const getDailySummary = async (date: Date = new Date()) => {
     let pending = 0;
 
     // Calculate scheduled doses for today
-    const now = Date.now() / 1000;
-
     for (const med of medications) {
-        if (!med.times || med.times.length === 0) continue;
-
-        console.log(`Processing medication: ${med.name} with ${med.times.length} times`);
+        if (!med.times || med.times.length === 0 || !med.id) {
+            continue;
+        }
 
         for (const time of med.times) {
             const [hours, minutes] = time.split(':').map(Number);
@@ -219,19 +235,14 @@ export const getDailySummary = async (date: Date = new Date()) => {
             const scheduledTime = Math.floor(scheduledDate.getTime() / 1000);
 
             // Only count doses that are scheduled for today
-            if (scheduledTime >= Math.floor(startOfDay.getTime() / 1000) &&
-                scheduledTime <= Math.floor(endOfDay.getTime() / 1000)) {
-
+            if (scheduledTime >= startTimestamp && scheduledTime <= endTimestamp) {
                 total++;
 
-                // Check if this dose has been logged
-                const loggedDose = loggedDoses.find(d =>
-                    d.medication_id === med.id &&
-                    Math.abs(d.scheduled_time - scheduledTime) < 300 // Within 5 minutes
-                );
+                // Fast O(1) lookup instead of O(n) find
+                const doseKey = `${med.id}_${scheduledTime}`;
+                const loggedDose = doseMap.get(doseKey);
 
                 if (loggedDose) {
-                    console.log(`  ${time} - Logged as ${loggedDose.status}`);
                     if (loggedDose.status === 'taken') {
                         taken++;
                     } else if (loggedDose.status === 'missed') {
@@ -241,21 +252,17 @@ export const getDailySummary = async (date: Date = new Date()) => {
                 } else {
                     // Dose not logged yet - check if it's pending or missed
                     const timeDiff = scheduledTime - now;
-                    const hoursUntil = timeDiff / 3600;
 
                     if (timeDiff > -1800) { // Within past 30 minutes or in future
                         pending++;
-                        console.log(`  ${time} - Pending (in ${hoursUntil.toFixed(1)}h)`);
                     } else {
                         missed++;
-                        console.log(`  ${time} - Missed (${hoursUntil.toFixed(1)}h ago)`);
                     }
                 }
             }
         }
     }
 
-    console.log(`Final Summary: Total=${total}, Taken=${taken}, Pending=${pending}, Missed=${missed}`);
     return { total, taken, missed, pending };
 };
 

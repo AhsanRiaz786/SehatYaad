@@ -50,7 +50,7 @@ const iconMappings: Record<string, keyof typeof LucideIcons> = {
     'user': 'User', // Single user fallback
 
     // Common actions
-    'checkmark': 'CheckCircle',
+    'checkmark': 'Check',
     'check': 'CheckCircle',
     'checkmark-circle': 'CheckCircle',
     'close': 'XCircle',
@@ -77,6 +77,13 @@ const iconMappings: Record<string, keyof typeof LucideIcons> = {
     'help-circle': 'HelpCircle',
     'alarm': 'AlarmClock',
     'clock': 'Clock',
+
+    // New additions for meaningful icons
+    'cloud-sun': 'CloudSun',
+    'cloud-moon': 'CloudMoon',
+    'hourglass': 'Hourglass',
+    'alert-circle': 'AlertCircle',
+    'slash': 'Slash',
 };
 
 export default function Icon({
@@ -141,7 +148,7 @@ export default function Icon({
             {label && (
                 <AccessibleText
                     variant="small"
-                    color={colors.text.charcoal}
+                    color={colors.text.primary}
                     style={styles.label}
                 >
                     {language === 'ur' ? label.ur : label.en}
